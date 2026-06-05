@@ -1,354 +1,262 @@
-const tg = window.Telegram?.WebApp;
+(() => {
+  const tg = window.Telegram?.WebApp;
+  tg?.ready?.();
+  tg?.expand?.();
 
-if (tg) {
-    tg.ready();
-    tg.expand();
-    tg.disableVerticalSwipes?.();
-}
+  const canvas = document.getElementById('game');
+  const ctx = canvas.getContext('2d');
+  const start = document.getElementById('start');
+  const over = document.getElementById('gameover');
+  const finalScore = document.getElementById('finalScore');
+  const playBtn = document.getElementById('play');
+  const againBtn = document.getElementById('again');
 
-let player;
-let platforms;
-let cursors;
-let scoreText;
-let bestText;
-let titleText;
-let tapText;
-let gameOverText;
-let restartText;
+  const W = 400, H = 600;
+  let dpr = 1, running = false, raf = 0;
+  let score = 0, best = Number(localStorage.getItem('notebookJumpBest') || 0);
+  let cameraY = 0, inputX = 0, pointerDown = false;
+  let player, platforms, ghosts;
 
-let score = 0;
-let bestScore = Number(localStorage.getItem("jump_dude_best") || 0);
-let gameStarted = false;
-let gameOver = false;
-let touchLeft = false;
-let touchRight = false;
+  const ASSETS = {
+    bg: './assets/bg.png',
+    wood: './assets/wood.png',
+    grass: './assets/grass.png',
+    monster: './assets/monster.png',
+    score: './assets/score.png'
+  };
+  const img = {};
+  let assetsReady = false;
 
-const PLAYER_WIDTH = 70;
-const PLAYER_HEIGHT = 90;
-const JUMP_POWER = -650;
-const MOVE_SPEED = 310;
+  function loadAssets() {
+    return Promise.all(Object.entries(ASSETS).map(([key, src]) => new Promise(resolve => {
+      const image = new Image();
+      image.onload = () => { img[key] = image; resolve(); };
+      image.onerror = resolve;
+      image.src = src;
+    }))).then(() => { assetsReady = true; draw(); });
+  }
 
-const config = {
-    type: Phaser.AUTO,
-    parent: "game",
-    width: window.innerWidth,
-    height: window.innerHeight,
-    backgroundColor: "#f8f4ea",
-    physics: {
-        default: "arcade",
-        arcade: {
-            gravity: { y: 930 },
-            debug: false
-        }
-    },
-    scene: {
-        preload,
-        create,
-        update
-    },
-    scale: {
-        mode: Phaser.Scale.RESIZE,
-        autoCenter: Phaser.Scale.CENTER_BOTH
-    }
-};
+  function resize() {
+    dpr = Math.min(window.devicePixelRatio || 1, 2);
+    canvas.width = Math.floor(W * dpr);
+    canvas.height = Math.floor(H * dpr);
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    draw();
+  }
+  window.addEventListener('resize', resize);
+  resize();
 
-new Phaser.Game(config);
+  const rnd = (a, b) => a + Math.random() * (b - a);
 
-function preload() {
-    this.load.image("monster", "assets/monster.svg");
-    this.load.image("platform_grass", "assets/platform_grass.svg");
-    this.load.image("platform_wood", "assets/platform_wood.svg");
-    this.load.image("score_flag", "assets/score_flag.svg");
-    this.load.image("tap_badge", "assets/tap_badge.svg");
-}
-
-function create() {
+  function reset() {
     score = 0;
-    gameStarted = false;
-    gameOver = false;
-    touchLeft = false;
-    touchRight = false;
+    cameraY = 0;
+    player = { x: W / 2 - 22, y: H - 185, w: 44, h: 74, vx: 0, vy: -11.8 };
+    platforms = [{ x: W / 2 - 58, y: H - 120, w: 116, h: 28, kind: 'grass' }];
+    ghosts = [];
+    for (let y = H - 205; y > -2500; y -= rnd(72, 104)) addPlatform(y);
+    for (let y = H - 520; y > -2500; y -= rnd(430, 620)) addGhost(y);
+  }
 
-    cursors = this.input.keyboard.createCursorKeys();
+  function addPlatform(y) {
+    const kind = Math.random() < 0.22 ? 'wood' : 'grass';
+    platforms.push({ x: rnd(46, W - 146), y, w: rnd(94, 128), h: kind === 'wood' ? 24 : 30, kind });
+  }
 
-    drawNotebookBackground.call(this);
-    drawGrass.call(this);
+  function addGhost(y) {
+    ghosts.push({ x: rnd(55, W - 105), y, w: 54, h: 88, vx: Math.random() < .5 ? -0.55 : 0.55 });
+  }
 
-    platforms = this.physics.add.staticGroup();
-    createPlatforms.call(this);
+  function startGame() {
+    reset();
+    running = true;
+    start.classList.add('hidden');
+    over.classList.add('hidden');
+    cancelAnimationFrame(raf);
+    loop();
+  }
+  playBtn.onclick = startGame;
+  againBtn.onclick = startGame;
 
-    player = this.physics.add.sprite(
-        this.scale.width / 2,
-        this.scale.height - 160,
-        "monster"
-    );
+  function jump(force = -12.8) {
+    if (!running) return;
+    player.vy = force;
+    tg?.HapticFeedback?.impactOccurred?.('light');
+  }
 
-    player.setDisplaySize(PLAYER_WIDTH, PLAYER_HEIGHT);
-    player.body.setSize(46, 58);
-    player.body.setOffset(37, 45);
-    player.body.setAllowGravity(false);
-    player.body.setCollideWorldBounds(false);
+  canvas.addEventListener('pointerdown', e => { pointerDown = true; setInput(e); jump(); });
+  canvas.addEventListener('pointermove', e => { if (pointerDown) setInput(e); });
+  window.addEventListener('pointerup', () => { pointerDown = false; inputX = 0; });
+  window.addEventListener('keydown', e => {
+    if (e.key === 'ArrowLeft' || e.key === 'a') inputX = -1;
+    if (e.key === 'ArrowRight' || e.key === 'd') inputX = 1;
+    if (e.code === 'Space') jump();
+  });
+  window.addEventListener('keyup', () => inputX = 0);
+  window.addEventListener('deviceorientation', e => {
+    if (typeof e.gamma === 'number') inputX = Math.max(-1, Math.min(1, e.gamma / 18));
+  });
 
-    this.physics.add.collider(player, platforms, jumpOnPlatform, null, this);
+  function setInput(e) {
+    const r = canvas.getBoundingClientRect();
+    const x = (e.clientX - r.left) / r.width * W;
+    inputX = x < W / 2 ? -1 : 1;
+  }
 
-    this.add.image(62, 48, "score_flag")
-        .setDisplaySize(124, 98)
-        .setDepth(9);
+  function loop() {
+    update();
+    draw();
+    if (running) raf = requestAnimationFrame(loop);
+  }
 
-    scoreText = this.add.text(22, 18, "SCORE\n0", {
-        fontSize: "23px",
-        color: "#ffffff",
-        align: "center",
-        fontFamily: "Arial, sans-serif",
-        fontStyle: "bold"
-    }).setDepth(10);
+  function update() {
+    player.vx += inputX * 0.55;
+    player.vx *= 0.88;
+    player.x += player.vx;
+    player.vy += 0.42;
+    player.y += player.vy;
 
-    bestText = this.add.text(this.scale.width - 22, 22, "BEST: " + bestScore, {
-        fontSize: "18px",
-        color: "#111111",
-        align: "right",
-        fontFamily: "Arial, sans-serif",
-        fontStyle: "bold"
-    }).setOrigin(1, 0).setDepth(10);
+    if (player.x < -player.w) player.x = W;
+    if (player.x > W) player.x = -player.w;
 
-    titleText = this.add.text(this.scale.width / 2, 120, "JUMP DUDE", {
-        fontSize: "42px",
-        color: "#6c55c9",
-        stroke: "#111111",
-        strokeThickness: 5,
-        fontFamily: "Arial, sans-serif",
-        fontStyle: "bold"
-    }).setOrigin(0.5).setDepth(20);
-
-    this.add.image(this.scale.width / 2, this.scale.height - 255, "tap_badge")
-        .setDisplaySize(230, 60)
-        .setDepth(18);
-
-    tapText = this.add.text(this.scale.width / 2, this.scale.height - 257, "TAP TO JUMP", {
-        fontSize: "23px",
-        color: "#111111",
-        fontFamily: "Arial, sans-serif",
-        fontStyle: "bold"
-    }).setOrigin(0.5).setDepth(20);
-
-    gameOverText = this.add.text(this.scale.width / 2, this.scale.height / 2 - 55, "", {
-        fontSize: "42px",
-        color: "#ff4757",
-        stroke: "#111111",
-        strokeThickness: 5,
-        align: "center",
-        fontFamily: "Arial, sans-serif",
-        fontStyle: "bold"
-    }).setOrigin(0.5).setDepth(30);
-
-    restartText = this.add.text(this.scale.width / 2, this.scale.height / 2 + 20, "", {
-        fontSize: "22px",
-        color: "#111111",
-        align: "center",
-        fontFamily: "Arial, sans-serif",
-        fontStyle: "bold"
-    }).setOrigin(0.5).setDepth(30);
-
-    this.input.on("pointerdown", (pointer) => {
-        if (gameOver) {
-            this.scene.restart();
-            return;
+    if (player.vy > 0) {
+      for (const p of platforms) {
+        const feet = player.y + player.h;
+        const hit = player.x + player.w * .86 > p.x && player.x + player.w * .14 < p.x + p.w &&
+          feet > p.y && feet < p.y + p.h + 16;
+        if (hit) {
+          jump(p.kind === 'wood' ? -11.6 : -13.2);
+          score += p.kind === 'wood' ? 5 : 10;
+          break;
         }
-
-        if (!gameStarted) {
-            startGame();
-        }
-
-        touchLeft = pointer.x < this.scale.width / 2;
-        touchRight = pointer.x >= this.scale.width / 2;
-    });
-
-    this.input.on("pointermove", (pointer) => {
-        if (!pointer.isDown || gameOver) return;
-
-        touchLeft = pointer.x < this.scale.width / 2;
-        touchRight = pointer.x >= this.scale.width / 2;
-    });
-
-    this.input.on("pointerup", () => {
-        touchLeft = false;
-        touchRight = false;
-    });
-}
-
-function startGame() {
-    gameStarted = true;
-    titleText.setVisible(false);
-    tapText.setVisible(false);
-    player.body.setAllowGravity(true);
-    player.body.setVelocityY(JUMP_POWER);
-}
-
-function update() {
-    if (!player || !player.body || gameOver) return;
-
-    if (gameStarted) {
-        if (cursors.left.isDown || touchLeft) {
-            player.body.setVelocityX(-MOVE_SPEED);
-            player.setFlipX(true);
-            player.setAngle(-6);
-        } else if (cursors.right.isDown || touchRight) {
-            player.body.setVelocityX(MOVE_SPEED);
-            player.setFlipX(false);
-            player.setAngle(6);
-        } else {
-            player.body.setVelocityX(player.body.velocity.x * 0.85);
-            player.setAngle(player.angle * 0.85);
-        }
+      }
     }
 
-    if (player.x < -45) player.x = this.scale.width + 45;
-    if (player.x > this.scale.width + 45) player.x = -45;
-
-    if (!gameStarted) return;
-
-    const cameraLine = this.scale.height * 0.38;
-
-    if (player.y < cameraLine) {
-        const diff = cameraLine - player.y;
-
-        player.y = cameraLine;
-        score += Math.floor(diff);
-
-        scoreText.setText("SCORE\n" + score);
-
-        if (score > bestScore) {
-            bestScore = score;
-            localStorage.setItem("jump_dude_best", bestScore);
-            bestText.setText("BEST: " + bestScore);
-        }
-
-        platforms.children.iterate((platform) => {
-            platform.y += diff;
-            platform.body.updateFromGameObject();
-
-            if (platform.y > this.scale.height + 40) {
-                platform.y = -40;
-                platform.x = Phaser.Math.Between(75, this.scale.width - 75);
-                platform.setTexture(randomPlatformTexture());
-                platform.body.updateFromGameObject();
-            }
-        });
+    for (const g of ghosts) {
+      g.x += g.vx;
+      if (g.x < 35 || g.x + g.w > W - 22) g.vx *= -1;
+      const hit = player.x + player.w * .75 > g.x && player.x + player.w * .25 < g.x + g.w &&
+        player.y + player.h * .85 > g.y && player.y + player.h * .15 < g.y + g.h;
+      if (hit) endGame();
     }
 
-    if (player.y > this.scale.height + 120) {
-        showGameOver.call(this);
-    }
-}
+    const targetCam = player.y - H * 0.42;
+    if (targetCam < cameraY) cameraY = targetCam;
+    score = Math.max(score, Math.floor(-cameraY / 2));
 
-function showGameOver() {
-    gameOver = true;
-    player.body.setVelocity(0, 0);
-    player.body.setAllowGravity(false);
+    const top = cameraY - 120;
+    const bottom = cameraY + H + 150;
+    platforms = platforms.filter(p => p.y < bottom);
+    ghosts = ghosts.filter(g => g.y < bottom);
+    while (platforms.length < 24) addPlatform(top - rnd(20, 100));
+    if (Math.random() < .006) addGhost(top - rnd(100, 240));
 
-    gameOverText.setText("GAME OVER");
-    restartText.setText("Tap to restart\nScore: " + score);
-}
+    if (player.y - cameraY > H + 90) endGame();
+  }
 
-function createPlatforms() {
-    platforms.clear(true, true);
+  function endGame() {
+    if (!running) return;
+    running = false;
+    best = Math.max(best, score);
+    localStorage.setItem('notebookJumpBest', String(best));
+    finalScore.textContent = `Score ${score} · Best ${best}`;
+    over.classList.remove('hidden');
+  }
 
-    const platformCount = Math.ceil(this.scale.height / 84) + 3;
+  function drawCover(image, x, y, w, h) {
+    if (!image) return;
+    const ir = image.width / image.height, r = w / h;
+    let sx = 0, sy = 0, sw = image.width, sh = image.height;
+    if (ir > r) { sw = image.height * r; sx = (image.width - sw) / 2; }
+    else { sh = image.width / r; sy = (image.height - sh) / 2; }
+    ctx.drawImage(image, sx, sy, sw, sh, x, y, w, h);
+  }
 
-    const startPlatform = platforms.create(
-        this.scale.width / 2,
-        this.scale.height - 104,
-        "platform_grass"
-    );
-    startPlatform.setDisplaySize(150, 42);
-    startPlatform.refreshBody();
+  function bg() {
+    ctx.clearRect(0, 0, W, H);
+    if (assetsReady && img.bg) drawCover(img.bg, 0, 0, W, H);
+    else { ctx.fillStyle = '#f8f2dc'; ctx.fillRect(0, 0, W, H); }
+  }
 
-    for (let i = 1; i < platformCount; i++) {
-        const x = Phaser.Math.Between(75, this.scale.width - 75);
-        const y = this.scale.height - 230 - i * 84;
+  function drawPlatform(p) {
+    const y = p.y - cameraY;
+    const image = p.kind === 'wood' ? img.wood : img.grass;
+    if (assetsReady && image) ctx.drawImage(image, p.x, y - (p.kind === 'grass' ? 4 : 2), p.w, p.h + (p.kind === 'grass' ? 10 : 6));
+  }
 
-        const platform = platforms.create(x, y, randomPlatformTexture());
-        platform.setDisplaySize(112, 36);
-        platform.refreshBody();
-    }
-}
+  function drawPlayer() {
+    const x = player.x, y = player.y - cameraY;
+    if (assetsReady && img.monster) ctx.drawImage(img.monster, x - 10, y - 6, player.w + 20, player.h + 24);
+  }
 
-function randomPlatformTexture() {
-    return Phaser.Math.Between(0, 1) === 1 ? "platform_grass" : "platform_wood";
-}
+  function drawGhost(g) {
+    const y = g.y - cameraY;
+    ctx.save();
+    ctx.globalAlpha = 0.28;
+    ctx.strokeStyle = '#222';
+    ctx.setLineDash([10, 7]);
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.roundRect(g.x, y, g.w, 23, 7);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.restore();
+  }
 
-function jumpOnPlatform(playerObj) {
-    if (!gameStarted || gameOver) return;
+  function drawScore() {
+    if (assetsReady && img.score) ctx.drawImage(img.score, 58, -3, 96, 93);
+    ctx.save();
+    ctx.fillStyle = '#784fd8';
+    ctx.fillRect(78, 43, 55, 25);
+    ctx.fillStyle = '#fff';
+    ctx.strokeStyle = '#52309e';
+    ctx.lineWidth = 2;
+    ctx.font = '30px "Comic Sans MS", "Trebuchet MS", sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.strokeText(String(score), 105, 55);
+    ctx.fillText(String(score), 105, 55);
+    ctx.restore();
 
-    if (playerObj.body.velocity.y > 0) {
-        playerObj.body.setVelocityY(JUMP_POWER);
-    }
-}
+    ctx.save();
+    ctx.fillStyle = '#f1d635';
+    ctx.strokeStyle = '#b59c16';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.roundRect(W - 112, 43, 88, 34, 4);
+    ctx.fill(); ctx.stroke();
+    ctx.fillStyle = '#232323';
+    ctx.font = '24px "Comic Sans MS", sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('x1.00', W - 68, 67);
+    ctx.restore();
+  }
 
-function drawNotebookBackground() {
-    const w = this.scale.width;
-    const h = this.scale.height;
+  function hint() {
+    if (!running || score >= 20) return;
+    ctx.save();
+    ctx.fillStyle = '#222';
+    ctx.strokeStyle = '#222';
+    ctx.font = '22px "Comic Sans MS", sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('TAP TO JUMP', W / 2, H - 105);
+    ctx.beginPath();
+    ctx.moveTo(W / 2, H - 86);
+    ctx.quadraticCurveTo(W / 2 + 22, H - 116, W / 2 + 7, H - 137);
+    ctx.stroke();
+    ctx.restore();
+  }
 
-    const bg = this.add.graphics();
-    bg.fillStyle(0xf8f4ea, 1);
-    bg.fillRect(0, 0, w, h);
+  function draw() {
+    bg();
+    if (!player) return;
+    ghosts.forEach(drawGhost);
+    platforms.forEach(drawPlatform);
+    drawPlayer();
+    drawScore();
+    hint();
+  }
 
-    bg.lineStyle(1, 0x9fc7df, 0.65);
-    for (let y = 40; y < h; y += 34) {
-        bg.beginPath();
-        bg.moveTo(0, y);
-        bg.lineTo(w, y);
-        bg.strokePath();
-    }
-
-    bg.lineStyle(2, 0xd85959, 0.7);
-    bg.beginPath();
-    bg.moveTo(w - 70, 0);
-    bg.lineTo(w - 70, h);
-    bg.strokePath();
-
-    bg.lineStyle(4, 0x345c8a, 0.9);
-    for (let y = 18; y < h; y += 34) {
-        bg.strokeCircle(18, y, 9);
-    }
-
-    bg.lineStyle(2, 0x111111, 0.25);
-    bg.beginPath();
-    bg.moveTo(w * 0.12, h * 0.18);
-    bg.lineTo(w * 0.17, h * 0.15);
-    bg.lineTo(w * 0.22, h * 0.18);
-    bg.strokePath();
-
-    bg.strokeCircle(w * 0.82, h * 0.22, 13);
-    bg.strokeCircle(w * 0.82, h * 0.22, 5);
-}
-
-function drawGrass() {
-    const h = this.scale.height;
-    const w = this.scale.width;
-
-    const grass = this.add.graphics();
-
-    grass.fillStyle(0x3f8f2f, 1);
-    grass.fillRect(0, h - 90, w, 90);
-
-    grass.lineStyle(3, 0x111111, 1);
-    grass.beginPath();
-    grass.moveTo(0, h - 90);
-
-    for (let x = 0; x <= w; x += 18) {
-        grass.lineTo(x, h - 90 + Phaser.Math.Between(-7, 7));
-    }
-    grass.strokePath();
-
-    for (let i = 0; i < 55; i++) {
-        const x = Phaser.Math.Between(0, w);
-        const y = Phaser.Math.Between(h - 84, h - 8);
-
-        grass.lineStyle(2, 0x1d5f22, 0.75);
-        grass.beginPath();
-        grass.moveTo(x, y);
-        grass.lineTo(x + Phaser.Math.Between(-8, 8), y - Phaser.Math.Between(8, 22));
-        grass.strokePath();
-    }
-}
+  reset();
+  loadAssets();
+})();
