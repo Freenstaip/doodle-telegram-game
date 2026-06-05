@@ -319,6 +319,87 @@ function createMonster(x, y) {
     body.lineStyle(4, 0x111111, 1);
 
     body.beginPath();
+
+    // голова с зубчиками
+    body.moveTo(-26, -30);
+    body.lineTo(-17, -42);
+    body.lineTo(-8, -30);
+    body.lineTo(2, -42);
+    body.lineTo(11, -30);
+    body.lineTo(25, -38);
+
+    // правая сторона
+    body.lineTo(27, 18);
+
+    // правая нога
+    body.lineTo(18, 30);
+    body.lineTo(10, 22);
+
+    // промежуток между ногами
+    body.lineTo(2, 36);
+    body.lineTo(-6, 22);
+
+    // левая нога
+    body.lineTo(-17, 30);
+    body.lineTo(-26, 18);
+
+    // левая сторона
+    body.closePath();
+
+    body.fillPath();
+    body.strokePath();
+
+    // глаз
+    const eye = this.add.graphics();
+    eye.fillStyle(0xffeb3b, 1);
+    eye.lineStyle(3, 0x111111, 1);
+    eye.fillCircle(8, -13, 10);
+    eye.strokeCircle(8, -13, 10);
+
+    eye.fillStyle(0x111111, 1);
+    eye.fillCircle(11, -15, 4);
+
+    // рот
+    const mouth = this.add.graphics();
+    mouth.fillStyle(0x111111, 1);
+    mouth.fillRoundedRect(-13, 6, 24, 12, 5);
+
+    // зуб
+    mouth.fillStyle(0xffffff, 1);
+    mouth.fillRect(-7, 6, 5, 6);
+
+    // маленькие линии прыжка
+    const legs = this.add.graphics();
+    legs.lineStyle(3, 0x111111, 1);
+
+    legs.beginPath();
+    legs.moveTo(-12, 42);
+    legs.lineTo(-14, 52);
+    legs.strokePath();
+
+    legs.beginPath();
+    legs.moveTo(0, 43);
+    legs.lineTo(0, 54);
+    legs.strokePath();
+
+    legs.beginPath();
+    legs.moveTo(12, 42);
+    legs.lineTo(14, 52);
+    legs.strokePath();
+
+    container.add([body, eye, mouth, legs]);
+    container.setSize(54, 90);
+
+    return container;
+}
+    const container = this.add.container(x, y);
+
+    const body = this.add.graphics();
+
+    body.fillStyle(0x7b5ce1, 1);
+    body.lineStyle(4, 0x111111, 1);
+
+    body.beginPath();
     body.moveTo(-24, -25);
     body.lineTo(-14, -35);
     body.lineTo(-4, -25);
