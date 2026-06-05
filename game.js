@@ -1,3 +1,9 @@
+const tg = window.Telegram?.WebApp;
+
+if (tg) {
+    tg.ready();
+    tg.expand();
+}
 let player;
 let platforms;
 let cursors;
