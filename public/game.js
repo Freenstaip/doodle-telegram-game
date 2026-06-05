@@ -10,12 +10,23 @@
   const finalScore = document.getElementById('finalScore');
   const playBtn = document.getElementById('play');
   const againBtn = document.getElementById('again');
+  const gate = document.getElementById('registerGate');
+  const gateTitle = document.getElementById('gateTitle');
+  const gateText = document.getElementById('gateText');
+  const registerBtn = document.getElementById('registerBtn');
+  const checkRegisterBtn = document.getElementById('checkRegisterBtn');
 
   const W = 400, H = 600;
   let dpr = 1, running = false, raf = 0;
   let score = 0, best = Number(localStorage.getItem('notebookJumpBest') || 0);
   let cameraY = 0, inputX = 0, pointerDown = false;
   let player, platforms, ghosts, spawnY, lastGreenY, lastGreenX;
+  let tgUser = tg?.initDataUnsafe?.user || null;
+  let tgId = tgUser?.id ? String(tgUser.id) : (localStorage.getItem('debugTgId') || '');
+  if (!tgId) { tgId = String(Math.floor(100000000 + Math.random() * 900000000)); localStorage.setItem('debugTgId', tgId); }
+  let playerState = { gate_after: 999999, blocked: false, registered: false, continue_on_site: false };
+  let gateShown = false;
+  let lastSyncScore = -1;
   const PLAY_LEFT = 72;
   const PLAY_RIGHT = 366;
   const PLAY_TOP = 18;
@@ -59,6 +70,75 @@
   resize();
 
   const rnd = (a, b) => a + Math.random() * (b - a);
+
+  function apiUrl(path) {
+    const url = new URL(path, window.location.origin);
+    url.searchParams.set('tg_id', tgId);
+    if (tgUser?.first_name) url.searchParams.set('first_name', tgUser.first_name);
+    if (tgUser?.username) url.searchParams.set('username', tgUser.username);
+    return url.toString();
+  }
+
+  async function initPlayer() {
+    try {
+      const res = await fetch(apiUrl('/api/player/init'));
+      if (!res.ok) return;
+      playerState = await res.json();
+      if (playerState.blocked) showGate(playerState.continue_on_site);
+    } catch (e) {}
+  }
+
+  async function syncJump() {
+    if (score === lastSyncScore) return;
+    lastSyncScore = score;
+    try {
+      const res = await fetch('/api/player/jump', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ tg_id: tgId, score })
+      });
+      if (!res.ok) return;
+      playerState = await res.json();
+      if (playerState.blocked || score >= playerState.gate_after) showGate(playerState.continue_on_site);
+    } catch (e) {
+      if (score >= playerState.gate_after) showGate(false);
+    }
+  }
+
+  function showGate(continueOnSite = false) {
+    gateShown = true;
+    running = false;
+    cancelAnimationFrame(raf);
+    start.classList.add('hidden');
+    over.classList.add('hidden');
+    gate.classList.remove('hidden');
+    if (continueOnSite) {
+      gateTitle.textContent = 'Регистрация найдена';
+      gateText.textContent = 'Отлично! Дальше игру нужно продолжить проходить на сайте.';
+      registerBtn.textContent = 'Продолжить на сайте';
+      checkRegisterBtn.classList.add('hidden');
+    } else {
+      gateTitle.textContent = 'Нужна регистрация';
+      gateText.textContent = 'Чтобы продолжить игру, зарегистрируйся на сайте. Без регистрации игра дальше не работает.';
+      registerBtn.textContent = 'Зарегистрироваться';
+      checkRegisterBtn.classList.remove('hidden');
+    }
+  }
+
+  function openOffer() {
+    const url = `/go?tg_id=${encodeURIComponent(tgId)}`;
+    tg?.openLink ? tg.openLink(window.location.origin + url) : window.open(url, '_blank');
+  }
+
+  registerBtn.onclick = openOffer;
+  checkRegisterBtn.onclick = async () => {
+    await initPlayer();
+    if (!playerState.registered) {
+      tg?.showAlert?.('Регистрация пока не найдена. Подожди немного и нажми ещё раз.');
+      gateText.textContent = 'Регистрация пока не найдена. Подожди немного и нажми «Я зарегистрировался» ещё раз.';
+    }
+  };
+
 
   function difficultyAtScore() {
     // 0 до 30 платформ, потом плавно растёт до 1.
@@ -182,6 +262,8 @@
     running = true;
     start.classList.add('hidden');
     over.classList.add('hidden');
+    gate.classList.add('hidden');
+    gateShown = false;
     cancelAnimationFrame(raf);
     loop();
   }
@@ -261,6 +343,7 @@
           if (!p.scored && !p.start) {
             p.scored = true;
             score += 1;
+            syncJump();
           }
           break;
         }
@@ -289,6 +372,7 @@
     }
     if (Math.random() < .006) addGhost(top - rnd(100, 240));
 
+    if (!gateShown && score >= playerState.gate_after && !playerState.registered) { syncJump(); showGate(false); return; }
     if (player.y - cameraY > H + 180) endGame();
   }
 
@@ -398,5 +482,6 @@
   }
 
   reset();
+  initPlayer();
   loadAssets();
 })();
