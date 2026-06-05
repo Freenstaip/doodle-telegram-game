@@ -15,3 +15,10 @@ CREATE TABLE IF NOT EXISTS players (
 CREATE INDEX IF NOT EXISTS idx_players_created_at ON players(created_at);
 CREATE INDEX IF NOT EXISTS idx_players_clicked_at ON players(clicked_at);
 CREATE INDEX IF NOT EXISTS idx_players_registered_at ON players(registered_at);
+
+CREATE TABLE IF NOT EXISTS admin_states (
+  admin_id TEXT PRIMARY KEY,
+  step TEXT NOT NULL,
+  data TEXT NOT NULL,
+  updated_at INTEGER NOT NULL
+);
