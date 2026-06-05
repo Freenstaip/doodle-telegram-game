@@ -10,7 +10,7 @@ not_found_handling = "single-page-application"
 [[d1_databases]]
 binding = "DB"
 database_name = "doodle-telegram-game-db"
-database_id = "PUT_YOUR_D1_DATABASE_ID_HERE"
+database_id = "62f1646f-cbf1-40a6-9e36-2e93b615ba5e"
 
 [vars]
 # ID админов через запятую. Узнать свой ID можно у @userinfobot.
