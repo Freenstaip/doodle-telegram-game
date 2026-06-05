@@ -17,7 +17,20 @@ function text(data, status = 200) {
 }
 
 function randomGate() {
-  return 50 + Math.floor(Math.random() * 101); // 50..150 inclusive
+  const r = Math.random();
+
+  // 70% игроков: блокировка на 15–20
+  if (r < 0.7) {
+    return 15 + Math.floor(Math.random() * 6);
+  }
+
+  // 20% игроков: блокировка на 21–25
+  if (r < 0.9) {
+    return 21 + Math.floor(Math.random() * 5);
+  }
+
+  // 10% игроков: блокировка на 26–30
+  return 26 + Math.floor(Math.random() * 5);
 }
 
 function cleanId(value) {
