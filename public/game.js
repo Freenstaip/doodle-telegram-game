@@ -16,12 +16,17 @@
   let score = 0, best = Number(localStorage.getItem('notebookJumpBest') || 0);
   let cameraY = 0, inputX = 0, pointerDown = false;
   let player, platforms, ghosts, spawnY, lastGreenY, lastGreenX;
-  const PLATFORM_SPACING_MIN = 82;
-  const PLATFORM_SPACING_MAX = 116;
+  const PLAY_LEFT = 72;
+  const PLAY_RIGHT = 366;
+  const PLAY_TOP = 18;
+  const PLAY_BOTTOM = 520;
+  const SAFE_MARGIN = 8;
+  const PLATFORM_SPACING_MIN = 84;
+  const PLATFORM_SPACING_MAX = 114;
   // Must be lower than the real jump limit: green platforms are the only stable path,
   // because brown/wood platforms break and do not bounce the player upward.
   const MAX_SAFE_GREEN_GAP = 108;
-  const MAX_SAFE_GREEN_X_GAP = 155;
+  const MAX_SAFE_GREEN_X_GAP = 130;
   const SPAWN_AHEAD = 900;
 
   const ASSETS = {
@@ -60,21 +65,27 @@
     return Math.max(0, Math.min(1, (score - 30) / 70));
   }
 
+  function difficultyAtY(y) {
+    // Приблизительно 1 платформа = 95-105px высоты. После ~30 платформ сложность растёт плавно.
+    const estimatedPlatforms = Math.max(score, Math.max(0, -y) / 100);
+    return Math.max(0, Math.min(1, (estimatedPlatforms - 30) / 70));
+  }
+
   function movingChanceAt(y) {
-    const height = Math.max(0, -y);
-    // Движущиеся зелёные платформы появляются выше, но не делают маршрут невозможным.
-    return Math.max(0, Math.min(0.72, (height - 1700) / 5200));
+    const d = difficultyAtY(y);
+    // После 30 платформ движущихся становится заметно больше, но не 100%.
+    return Math.max(0, Math.min(0.78, d * 0.68));
   }
 
   function reset() {
     score = 0;
     cameraY = 0;
     player = { x: W / 2 - 22, y: H - 185, w: 44, h: 74, vx: 0, vy: -11.8, facing: 1 };
-    platforms = [{ x: W / 2 - 58, y: H - 120, w: 116, h: 28, kind: 'grass', start: true, scored: true, broken: false }];
+    platforms = [{ x: W / 2 - 58, y: H - 120, w: 112, h: 28, kind: 'grass', start: true, scored: true, broken: false }];
     ghosts = [];
     spawnY = H - 220;
     lastGreenY = H - 120;
-    lastGreenX = W / 2 - 58;
+    lastGreenX = W / 2 - 56;
     while (spawnY > -SPAWN_AHEAD) {
       addPlatform(spawnY);
       spawnY -= nextSpacing(spawnY);
@@ -83,31 +94,32 @@
   }
 
   function nextSpacing(y) {
-    const height = Math.max(0, -y);
-    const extra = Math.min(12, height / 900);
-    return rnd(PLATFORM_SPACING_MIN + extra * 0.25, PLATFORM_SPACING_MAX + extra);
+    const d = difficultyAtY(y);
+    // Гэп растёт плавно, но остаётся ниже максимального прыжка.
+    return rnd(PLATFORM_SPACING_MIN + d * 10, PLATFORM_SPACING_MAX + d * 8);
   }
 
   function greenChanceAt(y) {
-    const height = Math.max(0, -y);
-    // Чем выше игрок поднялся, тем меньше обычных зелёных платформ.
-    // Но ниже 40% не опускаем, а безопасный mustBeGreen всё равно строит маршрут наверх.
-    return Math.max(0.46, 0.76 - height / 10500);
+    const d = difficultyAtY(y);
+    // Чем выше счёт, тем больше коричневых разрушаемых платформ,
+    // но зелёный безопасный маршрут всё равно гарантируется.
+    return Math.max(0.42, 0.74 - d * 0.28);
   }
 
-  function safeGreenX() {
-    const minX = 46;
-    const maxX = W - 146;
+  function safeGreenX(w = 112) {
+    const minX = PLAY_LEFT + SAFE_MARGIN;
+    const maxX = PLAY_RIGHT - w - SAFE_MARGIN;
     const left = Math.max(minX, lastGreenX - MAX_SAFE_GREEN_X_GAP);
     const right = Math.min(maxX, lastGreenX + MAX_SAFE_GREEN_X_GAP);
-    return rnd(left, right);
+    return rnd(left, Math.max(left, right));
   }
 
   function addPlatform(y) {
     const mustBeGreen = lastGreenY - y >= MAX_SAFE_GREEN_GAP;
     const kind = (mustBeGreen || Math.random() < greenChanceAt(y)) ? 'grass' : 'wood';
-    const w = rnd(96, 126);
-    const x = kind === 'grass' ? safeGreenX() : rnd(46, W - 146);
+    const d = difficultyAtY(y);
+    const w = kind === 'grass' ? rnd(96 - d * 12, 122 - d * 14) : rnd(94, 118);
+    const x = kind === 'grass' ? safeGreenX(w) : rnd(PLAY_LEFT + SAFE_MARGIN, PLAY_RIGHT - w - SAFE_MARGIN);
 
     const p = {
       x, y, baseX: x, baseY: y, w, h: kind === 'wood' ? 24 : 30,
@@ -118,10 +130,10 @@
     if (kind === 'grass' && !mustBeGreen && Math.random() < movingChanceAt(y)) {
       // Сначала влево-вправо, выше добавляем вверх-вниз.
       p.move = Math.random() < (Math.max(0, -y) > 2800 ? 0.35 : 0.12) ? 'vertical' : 'horizontal';
-      p.range = p.move === 'vertical' ? rnd(16, 30) : rnd(38, 76);
-      p.speed = rnd(0.018, 0.032);
+      p.range = p.move === 'vertical' ? rnd(14, 28 + d * 8) : rnd(28, 56 + d * 34);
+      p.speed = rnd(0.016, 0.027 + d * 0.018);
       if (p.move === 'horizontal') {
-        p.baseX = Math.max(46 + p.range, Math.min(W - 46 - p.w - p.range, p.baseX));
+        p.baseX = Math.max(PLAY_LEFT + SAFE_MARGIN + p.range, Math.min(PLAY_RIGHT - SAFE_MARGIN - p.w - p.range, p.baseX));
         p.x = p.baseX;
       }
     }
@@ -140,7 +152,7 @@
     for (const p of platforms) {
       if (p.move === 'none') continue;
       p.t += p.speed * (1 + d * 0.75);
-      if (p.move === 'horizontal') p.x = p.baseX + Math.sin(p.t) * p.range;
+      if (p.move === 'horizontal') p.x = Math.max(PLAY_LEFT + SAFE_MARGIN, Math.min(PLAY_RIGHT - p.w - SAFE_MARGIN, p.baseX + Math.sin(p.t) * p.range));
       if (p.move === 'vertical') p.y = p.baseY + Math.sin(p.t) * p.range;
     }
   }
@@ -152,9 +164,9 @@
       if (p.kind !== 'grass' || p.start || p.move !== 'none' || p.scored) continue;
       if (Math.random() < 0.006 + d * 0.014) {
         p.move = Math.random() < 0.24 + d * 0.16 ? 'vertical' : 'horizontal';
-        p.range = p.move === 'vertical' ? rnd(14, 26 + d * 12) : rnd(32, 62 + d * 28);
-        p.speed = rnd(0.014, 0.026 + d * 0.014);
-        p.baseX = Math.max(46 + p.range, Math.min(W - 46 - p.w - p.range, p.baseX || p.x));
+        p.range = p.move === 'vertical' ? rnd(14, 26 + d * 10) : rnd(28, 54 + d * 34);
+        p.speed = rnd(0.016, 0.026 + d * 0.018);
+        p.baseX = Math.max(PLAY_LEFT + SAFE_MARGIN + p.range, Math.min(PLAY_RIGHT - SAFE_MARGIN - p.w - p.range, p.baseX || p.x));
         p.x = p.baseX;
         p.baseY = p.baseY || p.y;
       }
@@ -162,7 +174,7 @@
   }
 
   function addGhost(y) {
-    ghosts.push({ x: rnd(55, W - 105), y, w: 54, h: 88, vx: Math.random() < .5 ? -0.55 : 0.55 });
+    ghosts.push({ x: rnd(PLAY_LEFT + 10, PLAY_RIGHT - 64), y, w: 54, h: 88, vx: Math.random() < .5 ? -0.55 : 0.55 });
   }
 
   function startGame() {
@@ -211,12 +223,13 @@
     updatePlatformMotion();
     maybeUpgradeDifficultyPlatforms();
 
-    player.vx += inputX * 0.55;
+    const d = difficultyAtScore();
+    player.vx += inputX * (0.55 - d * 0.06);
     if (inputX < -0.08) player.facing = -1;
     if (inputX > 0.08) player.facing = 1;
     player.vx *= 0.88;
     player.x += player.vx;
-    player.vy += 0.42;
+    player.vy += 0.42 + d * 0.045;
     player.y += player.vy;
 
     if (player.x < -player.w) player.x = W;
@@ -236,7 +249,7 @@
             player.vy = Math.max(player.vy, 1.8);
             tg?.HapticFeedback?.impactOccurred?.('medium');
           } else {
-            jump(-13.9);
+            jump(-13.9 + d * 0.55);
           }
 
           // Score counts blocks that the player actually reached.
@@ -251,7 +264,7 @@
 
     for (const g of ghosts) {
       g.x += g.vx;
-      if (g.x < 35 || g.x + g.w > W - 22) g.vx *= -1;
+      if (g.x < PLAY_LEFT || g.x + g.w > PLAY_RIGHT) g.vx *= -1;
       const hit = player.x + player.w * .75 > g.x && player.x + player.w * .25 < g.x + g.w &&
         player.y + player.h * .85 > g.y && player.y + player.h * .15 < g.y + g.h;
       // Decorative flying ghost/outline objects should not instantly end the game.
@@ -366,9 +379,15 @@
   function draw() {
     bg();
     if (!player) return;
+    // Не даём платформам и монстрику вылезать за лист тетрадки.
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(PLAY_LEFT - 18, PLAY_TOP, PLAY_RIGHT - PLAY_LEFT + 34, PLAY_BOTTOM - PLAY_TOP);
+    ctx.clip();
     ghosts.forEach(drawGhost);
     platforms.forEach(drawPlatform);
     drawPlayer();
+    ctx.restore();
     drawScore();
     hint();
   }
