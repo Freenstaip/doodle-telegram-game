@@ -115,3 +115,18 @@ document.addEventListener("keyup", e => {
 
 createPlatforms();
 loop();
+let touchLeft = false;
+let touchRight = false;
+
+canvas.addEventListener("touchstart", e => {
+  const touchX = e.touches[0].clientX;
+  const middle = window.innerWidth / 2;
+
+  touchLeft = touchX < middle;
+  touchRight = touchX >= middle;
+});
+
+canvas.addEventListener("touchend", () => {
+  touchLeft = false;
+  touchRight = false;
+});
