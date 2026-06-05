@@ -4,11 +4,13 @@ if (tg) {
     tg.ready();
     tg.expand();
 }
+
 let player;
 let platforms;
 let cursors;
 let score = 0;
 let scoreText;
+let userText;
 
 let touchLeft = false;
 let touchRight = false;
@@ -69,6 +71,13 @@ function create() {
         color: "#222"
     });
 
+    const username = tg?.initDataUnsafe?.user?.first_name || "Guest";
+
+    userText = this.add.text(20, 60, "Player: " + username, {
+        fontSize: "18px",
+        color: "#222"
+    });
+
     this.input.on("pointerdown", (pointer) => {
         touchLeft = pointer.x < this.scale.width / 2;
         touchRight = pointer.x >= this.scale.width / 2;
@@ -93,7 +102,7 @@ function createPlatforms() {
     const platformCount = Math.ceil(this.scale.height / 80) + 2;
 
     for (let i = 0; i < platformCount; i++) {
-        const x = Phaser.Math.Between(40, this.scale.width - 40);
+        const x = Phaser.Math.Between(50, this.scale.width - 50);
         const y = this.scale.height - i * 80;
 
         const platform = this.add.rectangle(x, y, 90, 14, 0x2ecc71);
@@ -145,6 +154,7 @@ function update() {
 
         player.y = cameraLine;
         score += Math.floor(diff);
+
         scoreText.setText("Score: " + score);
 
         platforms.children.iterate((platform) => {
@@ -153,7 +163,7 @@ function update() {
 
             if (platform.y > this.scale.height + 20) {
                 platform.y = -20;
-                platform.x = Phaser.Math.Between(40, this.scale.width - 40);
+                platform.x = Phaser.Math.Between(50, this.scale.width - 50);
                 platform.body.updateFromGameObject();
             }
         });
