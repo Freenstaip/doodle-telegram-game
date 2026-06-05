@@ -29,10 +29,7 @@ const config = {
             debug: false
         }
     },
-    scene: {
-        create,
-        update
-    },
+    scene: { create, update },
     scale: {
         mode: Phaser.Scale.RESIZE,
         autoCenter: Phaser.Scale.CENTER_BOTH
@@ -53,27 +50,23 @@ function create() {
     platforms = this.physics.add.staticGroup();
     createPlatforms.call(this);
 
-    player = createMonster.call(
-        this,
-        this.scale.width / 2,
-        this.scale.height - 150
-    );
+    player = createMonster.call(this, this.scale.width / 2, this.scale.height - 150);
 
     this.physics.add.existing(player);
-    player.body.setSize(42, 50);
-    player.body.setOffset(-21, -25);
+    player.body.setSize(42, 58);
+    player.body.setOffset(-21, -30);
     player.body.setAllowGravity(false);
 
     this.physics.add.collider(player, platforms, jumpOnPlatform, null, this);
 
-    scoreText = this.add.text(22, 28, "SCORE\n0", {
-        fontSize: "24px",
+    drawScoreFlag.call(this);
+
+    scoreText = this.add.text(22, 20, "SCORE\n0", {
+        fontSize: "23px",
         color: "#ffffff",
         align: "center",
         fontFamily: "Arial"
     }).setDepth(10);
-
-    drawScoreFlag.call(this);
 
     tapText = this.add.text(
         this.scale.width / 2,
@@ -87,9 +80,7 @@ function create() {
     ).setOrigin(0.5).setDepth(20);
 
     this.input.on("pointerdown", (pointer) => {
-        if (!gameStarted) {
-            startGame();
-        }
+        if (!gameStarted) startGame();
 
         touchLeft = pointer.x < this.scale.width / 2;
         touchRight = pointer.x >= this.scale.width / 2;
@@ -128,13 +119,8 @@ function update() {
         }
     }
 
-    if (player.x < -40) {
-        player.x = this.scale.width + 40;
-    }
-
-    if (player.x > this.scale.width + 40) {
-        player.x = -40;
-    }
+    if (player.x < -40) player.x = this.scale.width + 40;
+    if (player.x > this.scale.width + 40) player.x = -40;
 
     if (!gameStarted) return;
 
@@ -266,17 +252,11 @@ function drawScoreFlag() {
 
 function createSketchPlatform(x, y) {
     const container = this.add.container(x, y);
-
     const g = this.add.graphics();
 
     const isGrass = Phaser.Math.Between(0, 1) === 1;
 
-    if (isGrass) {
-        g.fillStyle(0x7eba42, 1);
-    } else {
-        g.fillStyle(0xb97832, 1);
-    }
-
+    g.fillStyle(isGrass ? 0x7eba42 : 0xb97832, 1);
     g.fillRoundedRect(-45, -8, 90, 16, 8);
 
     g.lineStyle(3, 0x111111, 1);
@@ -293,6 +273,7 @@ function createSketchPlatform(x, y) {
         }
     } else {
         g.lineStyle(2, 0x5c3317, 1);
+
         g.beginPath();
         g.moveTo(-35, -2);
         g.lineTo(35, -4);
@@ -320,36 +301,28 @@ function createMonster(x, y) {
 
     body.beginPath();
 
-    // голова с зубчиками
-    body.moveTo(-26, -30);
-    body.lineTo(-17, -42);
-    body.lineTo(-8, -30);
-    body.lineTo(2, -42);
-    body.lineTo(11, -30);
-    body.lineTo(25, -38);
+    body.moveTo(-28, -32);
+    body.lineTo(-18, -44);
+    body.lineTo(-8, -32);
+    body.lineTo(2, -44);
+    body.lineTo(12, -32);
+    body.lineTo(26, -40);
 
-    // правая сторона
-    body.lineTo(27, 18);
+    body.lineTo(28, 16);
 
-    // правая нога
-    body.lineTo(18, 30);
-    body.lineTo(10, 22);
+    body.lineTo(20, 30);
+    body.lineTo(11, 22);
+    body.lineTo(4, 37);
+    body.lineTo(-4, 37);
+    body.lineTo(-11, 22);
+    body.lineTo(-20, 30);
+    body.lineTo(-28, 16);
 
-    // промежуток между ногами
-    body.lineTo(2, 36);
-    body.lineTo(-6, 22);
-
-    // левая нога
-    body.lineTo(-17, 30);
-    body.lineTo(-26, 18);
-
-    // левая сторона
     body.closePath();
 
     body.fillPath();
     body.strokePath();
 
-    // глаз
     const eye = this.add.graphics();
     eye.fillStyle(0xffeb3b, 1);
     eye.lineStyle(3, 0x111111, 1);
@@ -359,81 +332,33 @@ function createMonster(x, y) {
     eye.fillStyle(0x111111, 1);
     eye.fillCircle(11, -15, 4);
 
-    // рот
     const mouth = this.add.graphics();
     mouth.fillStyle(0x111111, 1);
     mouth.fillRoundedRect(-13, 6, 24, 12, 5);
 
-    // зуб
     mouth.fillStyle(0xffffff, 1);
     mouth.fillRect(-7, 6, 5, 6);
 
-    // маленькие линии прыжка
     const legs = this.add.graphics();
-    legs.lineStyle(3, 0x111111, 1);
+    legs.lineStyle(4, 0x111111, 1);
 
     legs.beginPath();
-    legs.moveTo(-12, 42);
-    legs.lineTo(-14, 52);
+    legs.moveTo(-15, 39);
+    legs.lineTo(-18, 53);
     legs.strokePath();
 
     legs.beginPath();
-    legs.moveTo(0, 43);
-    legs.lineTo(0, 54);
+    legs.moveTo(0, 41);
+    legs.lineTo(0, 56);
     legs.strokePath();
 
     legs.beginPath();
-    legs.moveTo(12, 42);
-    legs.lineTo(14, 52);
+    legs.moveTo(15, 39);
+    legs.lineTo(18, 53);
     legs.strokePath();
 
     container.add([body, eye, mouth, legs]);
-    container.setSize(54, 90);
-
-    return container;
-}
-    const container = this.add.container(x, y);
-
-    const body = this.add.graphics();
-
-    body.fillStyle(0x7b5ce1, 1);
-    body.lineStyle(4, 0x111111, 1);
-
-    body.beginPath();
-    body.moveTo(-24, -25);
-    body.lineTo(-14, -35);
-    body.lineTo(-4, -25);
-    body.lineTo(6, -35);
-    body.lineTo(16, -25);
-    body.lineTo(24, -32);
-    body.lineTo(24, 28);
-    body.lineTo(10, 24);
-    body.lineTo(3, 34);
-    body.lineTo(-5, 24);
-    body.lineTo(-22, 28);
-    body.closePath();
-
-    body.fillPath();
-    body.strokePath();
-
-    const eye = this.add.graphics();
-    eye.fillStyle(0xffeb3b, 1);
-    eye.lineStyle(3, 0x111111, 1);
-    eye.fillCircle(8, -12, 10);
-    eye.strokeCircle(8, -12, 10);
-
-    eye.fillStyle(0x111111, 1);
-    eye.fillCircle(11, -14, 4);
-
-    const mouth = this.add.graphics();
-    mouth.fillStyle(0x111111, 1);
-    mouth.fillRoundedRect(-12, 8, 22, 10, 4);
-
-    mouth.fillStyle(0xffffff, 1);
-    mouth.fillRect(-7, 8, 5, 5);
-
-    container.add([body, eye, mouth]);
-    container.setSize(48, 70);
+    container.setSize(58, 96);
 
     return container;
 }
