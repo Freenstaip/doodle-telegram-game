@@ -1,172 +1,159 @@
-const canvas = document.getElementById("game");
-const ctx = canvas.getContext("2d");
-
-function resizeCanvas() {
-    canvas.width = window.innerWidth;
-    canvas.height = window.innerHeight;
-}
-
-resizeCanvas();
-window.addEventListener("resize", resizeCanvas);
-
-const player = {
-    x: window.innerWidth / 2,
-    y: window.innerHeight - 150,
-    w: 36,
-    h: 36,
-    vx: 0,
-    vy: 0
-};
-
+let player;
+let platforms;
+let cursors;
 let score = 0;
-let keys = {};
-let platforms = [];
+let scoreText;
 
 let touchLeft = false;
 let touchRight = false;
 
-const gravity = 0.35;
-const jumpPower = -11;
-const platformWidth = 90;
-const platformHeight = 14;
-
-function createPlatforms() {
-    platforms = [];
-
-    const count = Math.ceil(canvas.height / 80) + 2;
-
-    for (let i = 0; i < count; i++) {
-        platforms.push({
-            x: Math.random() * (canvas.width - platformWidth),
-            y: canvas.height - i * 80,
-            w: platformWidth,
-            h: platformHeight
-        });
+const config = {
+    type: Phaser.AUTO,
+    parent: "game",
+    width: window.innerWidth,
+    height: window.innerHeight,
+    backgroundColor: "#9be7ff",
+    physics: {
+        default: "arcade",
+        arcade: {
+            gravity: { y: 900 },
+            debug: false
+        }
+    },
+    scene: {
+        preload,
+        create,
+        update
+    },
+    scale: {
+        mode: Phaser.Scale.RESIZE,
+        autoCenter: Phaser.Scale.CENTER_BOTH
     }
+};
 
-    platforms[0].x = player.x - 30;
-    platforms[0].y = player.y + 60;
-}
+const game = new Phaser.Game(config);
 
-function resetGame() {
-    player.x = canvas.width / 2;
-    player.y = canvas.height - 150;
-    player.vx = 0;
-    player.vy = -8;
+function preload() {}
+
+function create() {
     score = 0;
 
-    createPlatforms();
+    cursors = this.input.keyboard.createCursorKeys();
+
+    platforms = this.physics.add.staticGroup();
+
+    createPlatforms.call(this);
+
+    player = this.add.rectangle(
+        this.scale.width / 2,
+        this.scale.height - 180,
+        36,
+        36,
+        0xff4757
+    );
+
+    this.physics.add.existing(player);
+    player.body.setCollideWorldBounds(false);
+    player.body.setVelocityY(-500);
+
+    this.physics.add.collider(player, platforms, jumpOnPlatform, null, this);
+
+    scoreText = this.add.text(20, 30, "Score: 0", {
+        fontSize: "24px",
+        color: "#222"
+    });
+
+    this.input.on("pointerdown", (pointer) => {
+        touchLeft = pointer.x < this.scale.width / 2;
+        touchRight = pointer.x >= this.scale.width / 2;
+    });
+
+    this.input.on("pointermove", (pointer) => {
+        if (!pointer.isDown) return;
+
+        touchLeft = pointer.x < this.scale.width / 2;
+        touchRight = pointer.x >= this.scale.width / 2;
+    });
+
+    this.input.on("pointerup", () => {
+        touchLeft = false;
+        touchRight = false;
+    });
+}
+
+function createPlatforms() {
+    platforms.clear(true, true);
+
+    const platformCount = Math.ceil(this.scale.height / 80) + 2;
+
+    for (let i = 0; i < platformCount; i++) {
+        const x = Phaser.Math.Between(40, this.scale.width - 40);
+        const y = this.scale.height - i * 80;
+
+        const platform = this.add.rectangle(x, y, 90, 14, 0x2ecc71);
+        this.physics.add.existing(platform, true);
+        platforms.add(platform);
+    }
+
+    const startPlatform = this.add.rectangle(
+        this.scale.width / 2,
+        this.scale.height - 100,
+        120,
+        14,
+        0x2ecc71
+    );
+
+    this.physics.add.existing(startPlatform, true);
+    platforms.add(startPlatform);
+}
+
+function jumpOnPlatform(playerObj) {
+    if (playerObj.body.velocity.y > 0) {
+        playerObj.body.setVelocityY(-620);
+    }
 }
 
 function update() {
-    if (keys["ArrowLeft"] || touchLeft) {
-        player.vx = -5;
-    } else if (keys["ArrowRight"] || touchRight) {
-        player.vx = 5;
+    if (!player || !player.body) return;
+
+    if (cursors.left.isDown || touchLeft) {
+        player.body.setVelocityX(-300);
+    } else if (cursors.right.isDown || touchRight) {
+        player.body.setVelocityX(300);
     } else {
-        player.vx *= 0.85;
+        player.body.setVelocityX(player.body.velocity.x * 0.85);
     }
 
-    player.vy += gravity;
-    player.x += player.vx;
-    player.y += player.vy;
-
-    if (player.x < -player.w) {
-        player.x = canvas.width;
+    if (player.x < -30) {
+        player.x = this.scale.width + 30;
     }
 
-    if (player.x > canvas.width) {
-        player.x = -player.w;
+    if (player.x > this.scale.width + 30) {
+        player.x = -30;
     }
 
-    platforms.forEach((p) => {
-        if (
-            player.vy > 0 &&
-            player.x + player.w > p.x &&
-            player.x < p.x + p.w &&
-            player.y + player.h > p.y &&
-            player.y + player.h < p.y + p.h + 12
-        ) {
-            player.vy = jumpPower;
-        }
-    });
-
-    const cameraLine = canvas.height * 0.4;
+    const cameraLine = this.scale.height * 0.4;
 
     if (player.y < cameraLine) {
         const diff = cameraLine - player.y;
+
         player.y = cameraLine;
         score += Math.floor(diff);
+        scoreText.setText("Score: " + score);
 
-        platforms.forEach((p) => {
-            p.y += diff;
+        platforms.children.iterate((platform) => {
+            platform.y += diff;
+            platform.body.updateFromGameObject();
 
-            if (p.y > canvas.height) {
-                p.y = -platformHeight;
-                p.x = Math.random() * (canvas.width - platformWidth);
+            if (platform.y > this.scale.height + 20) {
+                platform.y = -20;
+                platform.x = Phaser.Math.Between(40, this.scale.width - 40);
+                platform.body.updateFromGameObject();
             }
         });
     }
 
-    if (player.y > canvas.height) {
-        resetGame();
+    if (player.y > this.scale.height + 100) {
+        this.scene.restart();
     }
 }
-
-function draw() {
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-    ctx.fillStyle = "#222";
-    ctx.font = "24px Arial";
-    ctx.fillText("Score: " + score, 20, 40);
-
-    ctx.fillStyle = "#2ecc71";
-    platforms.forEach((p) => {
-        ctx.fillRect(p.x, p.y, p.w, p.h);
-    });
-
-    ctx.fillStyle = "#ff4757";
-    ctx.fillRect(player.x, player.y, player.w, player.h);
-}
-
-function loop() {
-    update();
-    draw();
-    requestAnimationFrame(loop);
-}
-
-document.addEventListener("keydown", (e) => {
-    keys[e.key] = true;
-});
-
-document.addEventListener("keyup", (e) => {
-    keys[e.key] = false;
-});
-
-canvas.addEventListener("touchstart", (e) => {
-    e.preventDefault();
-
-    const touchX = e.touches[0].clientX;
-    const middle = window.innerWidth / 2;
-
-    touchLeft = touchX < middle;
-    touchRight = touchX >= middle;
-});
-
-canvas.addEventListener("touchmove", (e) => {
-    e.preventDefault();
-
-    const touchX = e.touches[0].clientX;
-    const middle = window.innerWidth / 2;
-
-    touchLeft = touchX < middle;
-    touchRight = touchX >= middle;
-});
-
-canvas.addEventListener("touchend", () => {
-    touchLeft = false;
-    touchRight = false;
-});
-
-resetGame();
-loop();
