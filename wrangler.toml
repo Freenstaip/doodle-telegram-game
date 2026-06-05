@@ -1,6 +1,25 @@
 name = "doodle-telegram-game"
+main = "src/worker.js"
 compatibility_date = "2026-06-05"
 
 [assets]
 directory = "./public"
+binding = "ASSETS"
 not_found_handling = "single-page-application"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "doodle-telegram-game-db"
+database_id = "PUT_YOUR_D1_DATABASE_ID_HERE"
+
+[vars]
+# ID админов через запятую. Узнать свой ID можно у @userinfobot.
+ADMIN_IDS = "PUT_YOUR_TELEGRAM_ID_HERE"
+# Финальная ссылка 1win/лендинга. В неё будет добавлен sub1=<telegram_id>.
+OFFER_URL = "https://1win.example/?ref=YOUR_REF"
+OFFER_SUBID_PARAM = "sub1"
+# Любая секретная строка для webhook Telegram и postback 1win.
+BOT_WEBHOOK_SECRET = "CHANGE_ME_BOT_SECRET"
+POSTBACK_SECRET = "CHANGE_ME_POSTBACK_SECRET"
+# Можно оставить пустым: Worker сам возьмёт домен из запроса.
+PUBLIC_BASE_URL = ""
