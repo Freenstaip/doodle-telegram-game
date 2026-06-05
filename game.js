@@ -15,7 +15,14 @@
   let dpr = 1, running = false, raf = 0;
   let score = 0, best = Number(localStorage.getItem('notebookJumpBest') || 0);
   let cameraY = 0, inputX = 0, pointerDown = false;
-  let player, platforms, ghosts;
+  let player, platforms, ghosts, spawnY, lastGreenY, lastGreenX;
+  const PLATFORM_SPACING_MIN = 82;
+  const PLATFORM_SPACING_MAX = 116;
+  // Must be lower than the real jump limit: green platforms are the only stable path,
+  // because brown/wood platforms break and do not bounce the player upward.
+  const MAX_SAFE_GREEN_GAP = 108;
+  const MAX_SAFE_GREEN_X_GAP = 155;
+  const SPAWN_AHEAD = 900;
 
   const ASSETS = {
     bg: './assets/bg.png',
@@ -48,19 +55,110 @@
 
   const rnd = (a, b) => a + Math.random() * (b - a);
 
+  function difficultyAtScore() {
+    // 0 до 30 платформ, потом плавно растёт до 1.
+    return Math.max(0, Math.min(1, (score - 30) / 70));
+  }
+
+  function movingChanceAt(y) {
+    const height = Math.max(0, -y);
+    // Движущиеся зелёные платформы появляются выше, но не делают маршрут невозможным.
+    return Math.max(0, Math.min(0.72, (height - 1700) / 5200));
+  }
+
   function reset() {
     score = 0;
     cameraY = 0;
-    player = { x: W / 2 - 22, y: H - 185, w: 44, h: 74, vx: 0, vy: -11.8 };
-    platforms = [{ x: W / 2 - 58, y: H - 120, w: 116, h: 28, kind: 'grass' }];
+    player = { x: W / 2 - 22, y: H - 185, w: 44, h: 74, vx: 0, vy: -11.8, facing: 1 };
+    platforms = [{ x: W / 2 - 58, y: H - 120, w: 116, h: 28, kind: 'grass', start: true, scored: true, broken: false }];
     ghosts = [];
-    for (let y = H - 205; y > -2500; y -= rnd(72, 104)) addPlatform(y);
+    spawnY = H - 220;
+    lastGreenY = H - 120;
+    lastGreenX = W / 2 - 58;
+    while (spawnY > -SPAWN_AHEAD) {
+      addPlatform(spawnY);
+      spawnY -= nextSpacing(spawnY);
+    }
     for (let y = H - 520; y > -2500; y -= rnd(430, 620)) addGhost(y);
   }
 
+  function nextSpacing(y) {
+    const height = Math.max(0, -y);
+    const extra = Math.min(12, height / 900);
+    return rnd(PLATFORM_SPACING_MIN + extra * 0.25, PLATFORM_SPACING_MAX + extra);
+  }
+
+  function greenChanceAt(y) {
+    const height = Math.max(0, -y);
+    // Чем выше игрок поднялся, тем меньше обычных зелёных платформ.
+    // Но ниже 40% не опускаем, а безопасный mustBeGreen всё равно строит маршрут наверх.
+    return Math.max(0.46, 0.76 - height / 10500);
+  }
+
+  function safeGreenX() {
+    const minX = 46;
+    const maxX = W - 146;
+    const left = Math.max(minX, lastGreenX - MAX_SAFE_GREEN_X_GAP);
+    const right = Math.min(maxX, lastGreenX + MAX_SAFE_GREEN_X_GAP);
+    return rnd(left, right);
+  }
+
   function addPlatform(y) {
-    const kind = Math.random() < 0.22 ? 'wood' : 'grass';
-    platforms.push({ x: rnd(46, W - 146), y, w: rnd(94, 128), h: kind === 'wood' ? 24 : 30, kind });
+    const mustBeGreen = lastGreenY - y >= MAX_SAFE_GREEN_GAP;
+    const kind = (mustBeGreen || Math.random() < greenChanceAt(y)) ? 'grass' : 'wood';
+    const w = rnd(96, 126);
+    const x = kind === 'grass' ? safeGreenX() : rnd(46, W - 146);
+
+    const p = {
+      x, y, baseX: x, baseY: y, w, h: kind === 'wood' ? 24 : 30,
+      kind, start: false, scored: false, broken: false,
+      move: 'none', t: Math.random() * Math.PI * 2, range: 0, speed: 0
+    };
+
+    if (kind === 'grass' && !mustBeGreen && Math.random() < movingChanceAt(y)) {
+      // Сначала влево-вправо, выше добавляем вверх-вниз.
+      p.move = Math.random() < (Math.max(0, -y) > 2800 ? 0.35 : 0.12) ? 'vertical' : 'horizontal';
+      p.range = p.move === 'vertical' ? rnd(16, 30) : rnd(38, 76);
+      p.speed = rnd(0.018, 0.032);
+      if (p.move === 'horizontal') {
+        p.baseX = Math.max(46 + p.range, Math.min(W - 46 - p.w - p.range, p.baseX));
+        p.x = p.baseX;
+      }
+    }
+
+    platforms.push(p);
+
+    if (kind === 'grass') {
+      // Для гарантии достижимости считаем маршрут по центру движения платформы.
+      lastGreenY = y;
+      lastGreenX = p.baseX;
+    }
+  }
+
+  function updatePlatformMotion() {
+    const d = difficultyAtScore();
+    for (const p of platforms) {
+      if (p.move === 'none') continue;
+      p.t += p.speed * (1 + d * 0.75);
+      if (p.move === 'horizontal') p.x = p.baseX + Math.sin(p.t) * p.range;
+      if (p.move === 'vertical') p.y = p.baseY + Math.sin(p.t) * p.range;
+    }
+  }
+
+  function maybeUpgradeDifficultyPlatforms() {
+    if (score < 30) return;
+    const d = difficultyAtScore();
+    for (const p of platforms) {
+      if (p.kind !== 'grass' || p.start || p.move !== 'none' || p.scored) continue;
+      if (Math.random() < 0.006 + d * 0.014) {
+        p.move = Math.random() < 0.24 + d * 0.16 ? 'vertical' : 'horizontal';
+        p.range = p.move === 'vertical' ? rnd(14, 26 + d * 12) : rnd(32, 62 + d * 28);
+        p.speed = rnd(0.014, 0.026 + d * 0.014);
+        p.baseX = Math.max(46 + p.range, Math.min(W - 46 - p.w - p.range, p.baseX || p.x));
+        p.x = p.baseX;
+        p.baseY = p.baseY || p.y;
+      }
+    }
   }
 
   function addGhost(y) {
@@ -110,7 +208,12 @@
   }
 
   function update() {
+    updatePlatformMotion();
+    maybeUpgradeDifficultyPlatforms();
+
     player.vx += inputX * 0.55;
+    if (inputX < -0.08) player.facing = -1;
+    if (inputX > 0.08) player.facing = 1;
     player.vx *= 0.88;
     player.x += player.vx;
     player.vy += 0.42;
@@ -121,12 +224,26 @@
 
     if (player.vy > 0) {
       for (const p of platforms) {
+        if (p.broken) continue;
         const feet = player.y + player.h;
         const hit = player.x + player.w * .86 > p.x && player.x + player.w * .14 < p.x + p.w &&
           feet > p.y && feet < p.y + p.h + 16;
         if (hit) {
-          jump(p.kind === 'wood' ? -11.6 : -13.2);
-          score += p.kind === 'wood' ? 5 : 10;
+          // Brown wooden blocks are breakable: after landing on them they disappear
+          // and do not give a normal bounce. Green blocks stay safe and bouncy.
+          if (p.kind === 'wood') {
+            p.broken = true;
+            player.vy = Math.max(player.vy, 1.8);
+            tg?.HapticFeedback?.impactOccurred?.('medium');
+          } else {
+            jump(-13.9);
+          }
+
+          // Score counts blocks that the player actually reached.
+          if (!p.scored && !p.start) {
+            p.scored = true;
+            score += 1;
+          }
           break;
         }
       }
@@ -137,21 +254,24 @@
       if (g.x < 35 || g.x + g.w > W - 22) g.vx *= -1;
       const hit = player.x + player.w * .75 > g.x && player.x + player.w * .25 < g.x + g.w &&
         player.y + player.h * .85 > g.y && player.y + player.h * .15 < g.y + g.h;
-      if (hit) endGame();
+      // Decorative flying ghost/outline objects should not instantly end the game.
+      // The game ends only after the player actually falls below the screen.
+      if (hit && player.vy > 0 && player.y + player.h * .15 > g.y + g.h) jump(-14.2);
     }
 
     const targetCam = player.y - H * 0.42;
     if (targetCam < cameraY) cameraY = targetCam;
-    score = Math.max(score, Math.floor(-cameraY / 2));
-
-    const top = cameraY - 120;
+    const top = cameraY - SPAWN_AHEAD;
     const bottom = cameraY + H + 150;
-    platforms = platforms.filter(p => p.y < bottom);
+    platforms = platforms.filter(p => p.y < bottom && !p.broken);
     ghosts = ghosts.filter(g => g.y < bottom);
-    while (platforms.length < 24) addPlatform(top - rnd(20, 100));
+    while (spawnY > top) {
+      addPlatform(spawnY);
+      spawnY -= nextSpacing(spawnY);
+    }
     if (Math.random() < .006) addGhost(top - rnd(100, 240));
 
-    if (player.y - cameraY > H + 90) endGame();
+    if (player.y - cameraY > H + 180) endGame();
   }
 
   function endGame() {
@@ -186,7 +306,18 @@
 
   function drawPlayer() {
     const x = player.x, y = player.y - cameraY;
-    if (assetsReady && img.monster) ctx.drawImage(img.monster, x - 10, y - 6, player.w + 20, player.h + 24);
+    if (assetsReady && img.monster) {
+      const dw = player.w + 20, dh = player.h + 24;
+      ctx.save();
+      if (player.facing < 0) {
+        ctx.translate(x - 10 + dw, y - 6);
+        ctx.scale(-1, 1);
+        ctx.drawImage(img.monster, 0, 0, dw, dh);
+      } else {
+        ctx.drawImage(img.monster, x - 10, y - 6, dw, dh);
+      }
+      ctx.restore();
+    }
   }
 
   function drawGhost(g) {
@@ -206,8 +337,6 @@
   function drawScore() {
     if (assetsReady && img.score) ctx.drawImage(img.score, 58, -3, 96, 93);
     ctx.save();
-    ctx.fillStyle = '#784fd8';
-    ctx.fillRect(78, 43, 55, 25);
     ctx.fillStyle = '#fff';
     ctx.strokeStyle = '#52309e';
     ctx.lineWidth = 2;
@@ -217,23 +346,10 @@
     ctx.strokeText(String(score), 105, 55);
     ctx.fillText(String(score), 105, 55);
     ctx.restore();
-
-    ctx.save();
-    ctx.fillStyle = '#f1d635';
-    ctx.strokeStyle = '#b59c16';
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.roundRect(W - 112, 43, 88, 34, 4);
-    ctx.fill(); ctx.stroke();
-    ctx.fillStyle = '#232323';
-    ctx.font = '24px "Comic Sans MS", sans-serif';
-    ctx.textAlign = 'center';
-    ctx.fillText('x1.00', W - 68, 67);
-    ctx.restore();
   }
 
   function hint() {
-    if (!running || score >= 20) return;
+    if (!running || score >= 3) return;
     ctx.save();
     ctx.fillStyle = '#222';
     ctx.strokeStyle = '#222';
