@@ -31,9 +31,9 @@ function createPlatforms() {
 }
 
 function update() {
-  if (keys["ArrowLeft"]) player.vx = -4;
-  else if (keys["ArrowRight"]) player.vx = 4;
-  else player.vx *= 0.85;
+  if (keys["ArrowLeft"] || touchLeft) player.vx = -4;
+else if (keys["ArrowRight"] || touchRight) player.vx = 4;
+else player.vx *= 0.85;
 
   player.vy += gravity;
   player.x += player.vx;
