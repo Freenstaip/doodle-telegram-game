@@ -194,13 +194,18 @@
     tg?.HapticFeedback?.impactOccurred?.('light');
   }
 
-  canvas.addEventListener('pointerdown', e => { pointerDown = true; setInput(e); jump(); });
+  canvas.addEventListener('pointerdown', e => {
+    // Touch/click controls only horizontal movement.
+    // Do NOT call jump() here, otherwise fast left/right taps give infinite upward flight.
+    pointerDown = true;
+    setInput(e);
+  });
   canvas.addEventListener('pointermove', e => { if (pointerDown) setInput(e); });
   window.addEventListener('pointerup', () => { pointerDown = false; inputX = 0; });
   window.addEventListener('keydown', e => {
     if (e.key === 'ArrowLeft' || e.key === 'a') inputX = -1;
     if (e.key === 'ArrowRight' || e.key === 'd') inputX = 1;
-    if (e.code === 'Space') jump();
+    // Space/tap should not create an extra jump. The player jumps only after landing on a platform.
   });
   window.addEventListener('keyup', () => inputX = 0);
   window.addEventListener('deviceorientation', e => {
@@ -368,7 +373,7 @@
     ctx.strokeStyle = '#222';
     ctx.font = '22px "Comic Sans MS", sans-serif';
     ctx.textAlign = 'center';
-    ctx.fillText('TAP TO JUMP', W / 2, H - 105);
+    ctx.fillText('TAP LEFT / RIGHT', W / 2, H - 105);
     ctx.beginPath();
     ctx.moveTo(W / 2, H - 86);
     ctx.quadraticCurveTo(W / 2 + 22, H - 116, W / 2 + 7, H - 137);
