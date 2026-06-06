@@ -476,9 +476,17 @@
     if (player.x < -player.w) player.x = W;
     if (player.x > W) player.x = -player.w;
 
+    // Если монстрик уже упал ниже игрового листа/травы — сразу Game Over.
+    // Это запрещает отскок от нижней невидимой стартовой платформы.
+    if (player.y - cameraY > PLAY_BOTTOM + 35) {
+      endGame();
+      return;
+    }
+
     if (player.vy > 0) {
       for (const p of platforms) {
         if (p.broken) continue;
+        if (p.start && score > 0) continue;
 
         const feet = player.y + player.h;
         const prevFeet = prevY + player.h;
