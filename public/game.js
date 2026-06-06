@@ -26,6 +26,7 @@
   if (!tgId) { tgId = String(Math.floor(100000000 + Math.random() * 900000000)); localStorage.setItem('debugTgId', tgId); }
   let playerState = { gate_after: 999999, blocked: false, registered: false, continue_on_site: false };
   let gateShown = false;
+  let gateStep = 1;
   let lastSyncScore = -1;
   const PLAY_LEFT = 72;
   const PLAY_RIGHT = 366;
@@ -106,24 +107,28 @@
   }
 
   function showGate(continueOnSite = false) {
-    gateShown = true;
-    running = false;
-    cancelAnimationFrame(raf);
-    start.classList.add('hidden');
-    over.classList.add('hidden');
-    gate.classList.remove('hidden');
-    if (continueOnSite) {
-      gateTitle.textContent = 'Регистрация найдена';
-      gateText.textContent = 'Отлично! Дальше игру нужно продолжить проходить на сайте.';
-      registerBtn.textContent = 'Продолжить на сайте';
-      checkRegisterBtn.classList.add('hidden');
-    } else {
-      gateTitle.textContent = 'Нужна регистрация';
-      gateText.textContent = 'Чтобы продолжить игру, зарегистрируйся на сайте. Без регистрации игра дальше не работает.';
-      registerBtn.textContent = 'Зарегистрироваться';
-      checkRegisterBtn.classList.remove('hidden');
-    }
+  gateShown = true;
+  running = false;
+  cancelAnimationFrame(raf);
+  start.classList.add('hidden');
+  over.classList.add('hidden');
+  gate.classList.remove('hidden');
+
+  if (continueOnSite) {
+    gateTitle.textContent = 'Регистрация найдена';
+    gateText.textContent = 'Отлично! Дальше игру нужно продолжить проходить на сайте.';
+    registerBtn.textContent = 'Продолжить на сайте';
+    checkRegisterBtn.classList.add('hidden');
+    gateStep = 2;
+    return;
   }
+
+  gateStep = 1;
+  gateTitle.textContent = '🏆 Рекорд сохранён';
+  gateText.textContent = `Твой результат: ${score}. Ты попал в рейтинг игроков. Нажми продолжить, чтобы открыть бонусный режим.`;
+  registerBtn.textContent = 'Продолжить';
+  checkRegisterBtn.classList.add('hidden');
+}
 
   function openOffer() {
     const url = `/go?tg_id=${encodeURIComponent(tgId)}`;
