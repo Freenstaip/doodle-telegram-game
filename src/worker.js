@@ -903,6 +903,73 @@ async function botWebhook(request, env) {
     return text('ok');
   }
 
+
+  if (textMsg.startsWith('/reset')) {
+    if (!isAdmin) {
+      await sendTelegram(env, 'sendMessage', {
+        chat_id: chatId,
+        text: 'Нет доступа.'
+      });
+      return text('ok');
+    }
+
+    const id = cleanId(textMsg.split(/\s+/)[1]);
+
+    if (!id) {
+      await sendTelegram(env, 'sendMessage', {
+        chat_id: chatId,
+        text: 'Пример: /reset 123456789'
+      });
+      return text('ok');
+    }
+
+    const player = await env.DB.prepare(`
+      SELECT tg_id
+      FROM players
+      WHERE tg_id = ?
+    `)
+      .bind(id)
+      .first();
+
+    if (!player) {
+      await sendTelegram(env, 'sendMessage', {
+        chat_id: chatId,
+        text: `Игрок ${id} не найден.`
+      });
+      return text('ok');
+    }
+
+    const gateAfter = randomGate();
+    const lossGateAfter = randomLossGate();
+
+    await env.DB.prepare(`
+      UPDATE players
+      SET blocked_at = NULL,
+          losses = 0,
+          gate_after = ?,
+          loss_gate_after = ?,
+          last_seen_at = ?
+      WHERE tg_id = ?
+    `)
+      .bind(gateAfter, lossGateAfter, Date.now(), id)
+      .run();
+
+    await sendTelegram(env, 'sendMessage', {
+      chat_id: chatId,
+      text: [
+        '♻️ Игрок сброшен',
+        '',
+        `ID: ${id}`,
+        `Новая блокировка по счёту: ${gateAfter}`,
+        `Новая блокировка по поражениям: ${lossGateAfter}`,
+        '',
+        'Игрок сможет снова играть до появления окна регистрации.'
+      ].join('\n')
+    });
+
+    return text('ok');
+  }
+
   if (textMsg.startsWith('/start')) {
     await ensurePlayer(env, {
       tg_id: from.id,
