@@ -223,8 +223,8 @@ function adminKeyboard() {
       [{ text: '👥 Игроки', callback_data: 'admin_players' }],
       [{ text: '🏆 ТОП игроков', callback_data: 'players_top' }],
       [{ text: '📊 Воронка', callback_data: 'admin_funnel' }],
-      [{ text: '📈 Сегменты', callback_data: 'admin_segments' }]
-      [{ text: '🔔 Дожим', callback_data: 'admin_push_unregistered' }],
+      [{ text: '📈 Сегменты', callback_data: 'admin_segments' }],
+      [{ text: '🔔 Дожим', callback_data: 'admin_push_unregistered' }]
     ]
   };
 }
@@ -336,8 +336,8 @@ async function segmentsText(env) {
     SELECT
       CASE
         WHEN gate_after BETWEEN 15 AND 20 THEN '15–20'
-        WHEN gate_after BETWEEN 21 AND 25 THEN '21–25'
-        WHEN gate_after BETWEEN 26 AND 30 THEN '26–30'
+        WHEN gate_after BETWEEN 21 AND 25 THEN '21–30'
+        WHEN gate_after BETWEEN 26 AND 30 THEN '31–50'
         ELSE 'другое'
       END AS segment,
       COUNT(*) AS players,
@@ -462,14 +462,18 @@ async function botWebhook(request, env) {
   const baseUrl = getBaseUrl(request, env);
 
   if (update.callback_query) {
-    await sendTelegram(env, 'answerCallbackQuery', { callback_query_id: update.callback_query.id });
-if (data === 'admin_push_unregistered') {
-  await pushUnregistered(env, chatId, baseUrl);
-  return text('ok');
-}
-    if (!isAdmin) return text('ok');
+  await sendTelegram(env, 'answerCallbackQuery', {
+    callback_query_id: update.callback_query.id
+  });
 
-    const data = update.callback_query.data;
+  if (!isAdmin) return text('ok');
+
+  const data = update.callback_query.data;
+
+  if (data === 'admin_push_unregistered') {
+    await pushUnregistered(env, chatId, baseUrl);
+    return text('ok');
+  }
 
     if (data === 'admin_stats') {
       const s = await stats(env);
