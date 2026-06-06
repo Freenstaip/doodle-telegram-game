@@ -336,8 +336,8 @@ async function segmentsText(env) {
     SELECT
       CASE
         WHEN gate_after BETWEEN 15 AND 20 THEN '15–20'
-        WHEN gate_after BETWEEN 21 AND 25 THEN '21–30'
-        WHEN gate_after BETWEEN 26 AND 30 THEN '31–50'
+        WHEN gate_after BETWEEN 21 AND 30 THEN '21–30'
+        WHEN gate_after BETWEEN 31 AND 50 THEN '31–50'
         ELSE 'другое'
       END AS segment,
       COUNT(*) AS players,
