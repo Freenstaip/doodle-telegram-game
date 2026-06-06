@@ -443,7 +443,13 @@
           if (!p.scored && !p.start) {
             p.scored = true;
             score += 1;
-            syncJump();
+
+if (
+  score % 3 === 0 ||
+  score >= playerState.gate_after - 2
+) {
+  syncJump();
+}
           }
 
           break;
@@ -486,9 +492,9 @@
       score >= playerState.gate_after &&
       !playerState.registered
     ) {
-      syncJump();
       showGate(false);
-      return;
+syncJump();
+return;
     }
 
     if (player.y - cameraY > H + 180) endGame();
