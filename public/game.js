@@ -72,6 +72,7 @@
       const image = new Image();
       image.onload = () => {
         img[key] = image;
+        draw();
         resolve();
       };
       image.onerror = resolve;
@@ -439,9 +440,14 @@
 
   window.addEventListener('keyup', () => inputX = 0);
 
+  // Отключено: на Android Telegram WebView часто даёт постоянный наклон,
+  // из-за чего монстрика тянет влево/вправо без касания экрана.
+  // Управление остаётся через тап/свайп влево-вправо.
+  /*
   window.addEventListener('deviceorientation', e => {
     if (typeof e.gamma === 'number') inputX = Math.max(-1, Math.min(1, e.gamma / 18));
   });
+  */
 
   function setInput(e) {
     const r = canvas.getBoundingClientRect();
@@ -476,27 +482,19 @@
     if (player.x < -player.w) player.x = W;
     if (player.x > W) player.x = -player.w;
 
-    // Если монстрик уже упал ниже игрового листа/травы — сразу Game Over.
-    // Это запрещает отскок от нижней невидимой стартовой платформы.
-    if (player.y - cameraY > PLAY_BOTTOM + 35) {
-      endGame();
-      return;
-    }
-
     if (player.vy > 0) {
       for (const p of platforms) {
         if (p.broken) continue;
-        if (p.start && score > 0) continue;
 
         const feet = player.y + player.h;
         const prevFeet = prevY + player.h;
 
         const hit =
-          player.x + player.w * 0.75 > p.x + 6 &&
-          player.x + player.w * 0.25 < p.x + p.w - 6 &&
-          prevFeet <= p.y + 2 &&
+          player.x + player.w * 0.86 > p.x &&
+          player.x + player.w * 0.14 < p.x + p.w &&
+          prevFeet <= p.y &&
           feet >= p.y &&
-          feet <= p.y + 8;
+          feet <= p.y + Math.max(12, p.h);
 
         if (hit) {
           if (p.kind === 'wood') {
@@ -616,7 +614,7 @@
     const y = p.y - cameraY;
     const image = p.kind === 'wood' ? img.wood : img.grass;
 
-    if (assetsReady && image) {
+    if (image) {
       ctx.drawImage(
         image,
         p.x,
@@ -624,14 +622,34 @@
         p.w,
         p.h + (p.kind === 'grass' ? 10 : 6)
       );
+      return;
     }
+
+    // Fallback для Android/медленной загрузки картинок:
+    // платформа видна сразу, даже если ассеты ещё грузятся.
+    ctx.save();
+    ctx.fillStyle = p.kind === 'wood' ? '#9b6a2f' : '#6fbf3d';
+    ctx.strokeStyle = p.kind === 'wood' ? '#5a3718' : '#2f7d22';
+    ctx.lineWidth = 2;
+
+    if (typeof ctx.roundRect === 'function') {
+      ctx.beginPath();
+      ctx.roundRect(p.x, y, p.w, p.h, 10);
+      ctx.fill();
+      ctx.stroke();
+    } else {
+      ctx.fillRect(p.x, y, p.w, p.h);
+      ctx.strokeRect(p.x, y, p.w, p.h);
+    }
+
+    ctx.restore();
   }
 
   function drawPlayer() {
     const x = player.x;
     const y = player.y - cameraY;
 
-    if (assetsReady && img.monster) {
+    if (img.monster) {
       const dw = player.w + 20;
       const dh = player.h + 24;
 
@@ -646,7 +664,38 @@
       }
 
       ctx.restore();
+      return;
     }
+
+    // Fallback для Android/медленной загрузки monster.png.
+    ctx.save();
+    ctx.fillStyle = '#7b4bd6';
+    ctx.strokeStyle = '#2d1b5f';
+    ctx.lineWidth = 3;
+
+    if (typeof ctx.roundRect === 'function') {
+      ctx.beginPath();
+      ctx.roundRect(x, y, player.w, player.h, 10);
+      ctx.fill();
+      ctx.stroke();
+    } else {
+      ctx.fillRect(x, y, player.w, player.h);
+      ctx.strokeRect(x, y, player.w, player.h);
+    }
+
+    ctx.fillStyle = '#fff176';
+    ctx.strokeStyle = '#2d1b5f';
+    ctx.beginPath();
+    ctx.arc(x + player.w * 0.55, y + player.h * 0.32, 10, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+
+    ctx.fillStyle = '#111';
+    ctx.beginPath();
+    ctx.arc(x + player.w * 0.55, y + player.h * 0.32, 4, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.restore();
   }
 
   function drawGhost(g) {
