@@ -484,11 +484,11 @@
         const prevFeet = prevY + player.h;
 
         const hit =
-          player.x + player.w * 0.86 > p.x &&
-          player.x + player.w * 0.14 < p.x + p.w &&
-          prevFeet <= p.y &&
+          player.x + player.w * 0.75 > p.x + 6 &&
+          player.x + player.w * 0.25 < p.x + p.w - 6 &&
+          prevFeet <= p.y + 2 &&
           feet >= p.y &&
-          feet <= p.y + Math.max(12, p.h);
+          feet <= p.y + 8;
 
         if (hit) {
           if (p.kind === 'wood') {
