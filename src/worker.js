@@ -224,6 +224,7 @@ function adminKeyboard() {
       [{ text: '🏆 ТОП игроков', callback_data: 'players_top' }],
       [{ text: '📊 Воронка', callback_data: 'admin_funnel' }],
       [{ text: '📈 Сегменты', callback_data: 'admin_segments' }]
+      [{ text: '🔔 Дожим', callback_data: 'admin_push_unregistered' }],
     ]
   };
 }
@@ -398,7 +399,54 @@ async function findPlayerText(env, tgId) {
     `Зарегистрировался: ${p.registered_at ? 'Да' : 'Нет'}`
   ].join('\n');
 }
+async function pushUnregistered(env, chatId, baseUrl) {
+  const rows = await env.DB.prepare(`
+    SELECT tg_id, max_score
+    FROM players
+    WHERE blocked_at IS NOT NULL
+      AND registered_at IS NULL
+    ORDER BY blocked_at DESC
+    LIMIT 1000
+  `).all();
 
+  const players = rows.results || [];
+  let ok = 0;
+  let fail = 0;
+
+  await sendTelegram(env, 'sendMessage', {
+    chat_id: chatId,
+    text: `🔔 Начинаю дожим.\n\nИгроков к отправке: ${players.length}`
+  });
+
+  for (const p of players) {
+    try {
+      await sendTelegram(env, 'sendMessage', {
+        chat_id: p.tg_id,
+        text: [
+          '🔥 Твой рекорд сохранён!',
+          '',
+          `Твой результат: ${p.max_score || 0}`,
+          '',
+          'Ты был близко к ТОПу. Продолжи игру и забери бонус 👇'
+        ].join('\n'),
+        reply_markup: {
+          inline_keyboard: [[
+            { text: '🎮 Продолжить игру', web_app: { url: baseUrl + '/' } }
+          ]]
+        }
+      });
+      ok++;
+      await new Promise(resolve => setTimeout(resolve, 40));
+    } catch {
+      fail++;
+    }
+  }
+
+  await sendTelegram(env, 'sendMessage', {
+    chat_id: chatId,
+    text: `✅ Дожим завершён.\n\nОтправлено: ${ok}\nОшибок: ${fail}`
+  });
+}
 async function botWebhook(request, env) {
   const url = new URL(request.url);
   const secret = url.pathname.split('/').pop();
@@ -415,7 +463,10 @@ async function botWebhook(request, env) {
 
   if (update.callback_query) {
     await sendTelegram(env, 'answerCallbackQuery', { callback_query_id: update.callback_query.id });
-
+if (data === 'admin_push_unregistered') {
+  await pushUnregistered(env, chatId, baseUrl);
+  return text('ok');
+}
     if (!isAdmin) return text('ok');
 
     const data = update.callback_query.data;
