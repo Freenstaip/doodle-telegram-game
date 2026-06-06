@@ -564,7 +564,7 @@
       return;
     }
 
-    if (player.y - cameraY > H + 180) endGame();
+    if (player.y - cameraY > H + 120) endGame();
   }
 
   function endGame() {
