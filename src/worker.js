@@ -67,14 +67,16 @@ async function ensurePlayer(env, data) {
   }
 
   const gateAfter = randomGate();
+  const lossGateAfter = 1 + Math.floor(Math.random() * 2);
   await env.DB.prepare(`INSERT INTO players (tg_id, first_name, username, created_at, last_seen_at, gate_after) VALUES (?, ?, ?, ?, ?, ?)`)
     .bind(tgId, data.first_name || null, data.username || null, now, now, gateAfter).run();
   return { tg_id: tgId, first_name: data.first_name || null, username: data.username || null, created_at: now, last_seen_at: now, gate_after: gateAfter, max_score: 0, blocked_at: null, clicked_at: null, registered_at: null };
 }
 
 function publicPlayer(row) {
+  const whitelisted = Boolean(row.whitelist);
   const registered = Boolean(row.registered_at);
-  const blocked = registered || Boolean(row.blocked_at);
+  const blocked = !whitelisted && (registered || Boolean(row.blocked_at));
   return {
     tg_id: row.tg_id,
     gate_after: row.gate_after,
@@ -83,6 +85,9 @@ function publicPlayer(row) {
     registered,
     blocked,
     continue_on_site: registered
+    whitelisted,
+    losses: row.losses || 0,
+    loss_gate_after: row.loss_gate_after || 0,
   };
 }
 
@@ -113,7 +118,39 @@ async function playerJump(request, env) {
   p = await env.DB.prepare('SELECT * FROM players WHERE tg_id = ?').bind(tgId).first();
   return json(publicPlayer(p));
 }
+async function playerLoss(request, env) {
+  const body = await request.json().catch(() => ({}));
+  const tgId = cleanId(body.tg_id);
+  if (!tgId) return json({ error: 'bad_tg_id' }, 400);
 
+  let p = await env.DB.prepare('SELECT * FROM players WHERE tg_id = ?').bind(tgId).first();
+  if (!p) p = await ensurePlayer(env, { tg_id: tgId });
+
+  const now = Date.now();
+
+  if (p.whitelist || p.registered_at) {
+    await env.DB.prepare(`
+      UPDATE players
+      SET losses = COALESCE(losses, 0) + 1,
+          last_seen_at = ?
+      WHERE tg_id = ?
+    `).bind(now, tgId).run();
+  } else {
+    const nextLosses = (p.losses || 0) + 1;
+    const shouldBlock = nextLosses >= (p.loss_gate_after || 1);
+
+    await env.DB.prepare(`
+      UPDATE players
+      SET losses = ?,
+          last_seen_at = ?,
+          blocked_at = CASE WHEN ? THEN COALESCE(blocked_at, ?) ELSE blocked_at END
+      WHERE tg_id = ?
+    `).bind(nextLosses, now, shouldBlock ? 1 : 0, now, tgId).run();
+  }
+
+  p = await env.DB.prepare('SELECT * FROM players WHERE tg_id = ?').bind(tgId).first();
+  return json(publicPlayer(p));
+}
 async function go(request, env) {
   const url = new URL(request.url);
   const tgId = cleanId(url.searchParams.get('tg_id') || url.searchParams.get('sub1'));
@@ -615,6 +652,7 @@ export default {
     try {
       if (url.pathname === '/api/player/init') return playerInit(request, env);
       if (url.pathname === '/api/player/jump' && request.method === 'POST') return playerJump(request, env);
+      if (url.pathname === '/api/player/loss' && request.method === 'POST') return playerLoss(request, env);
       if (url.pathname === '/go') return go(request, env);
       if (url.pathname === '/api/1win-postback') return registrationPostback(request, env);
       if (url.pathname.startsWith('/bot/')) return botWebhook(request, env);
