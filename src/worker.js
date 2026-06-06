@@ -19,18 +19,18 @@ function text(data, status = 200) {
 function randomGate() {
   const r = Math.random();
 
-  // 70% игроков: блокировка на 15–20
-  if (r < 0.7) {
+  // 50% игроков: 15–20
+  if (r < 0.5) {
     return 15 + Math.floor(Math.random() * 6);
   }
 
-  // 20% игроков: блокировка на 21–25
-  if (r < 0.9) {
-    return 21 + Math.floor(Math.random() * 5);
+  // 30% игроков: 21–30
+  if (r < 0.8) {
+    return 21 + Math.floor(Math.random() * 10);
   }
 
-  // 10% игроков: блокировка на 26–30
-  return 26 + Math.floor(Math.random() * 5);
+  // 20% игроков: 31–50
+  return 31 + Math.floor(Math.random() * 20);
 }
 
 function cleanId(value) {
