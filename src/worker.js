@@ -164,6 +164,7 @@ async function stats(env) {
       SUM(CASE WHEN blocked_at IS NOT NULL THEN 1 ELSE 0 END) AS blocked
     FROM players
   `).bind(now - DAY_MS).first();
+
   return {
     total_players: row.total_players || 0,
     new_24h: row.new_24h || 0,
@@ -174,28 +175,227 @@ async function stats(env) {
 }
 
 async function sendTelegram(env, method, payload) {
-  const token = env.TELEGRAM_BOT_TOKEN;
+  const token = env.TELEGRAM_BOT_TOKEN || env.BOT_TOKEN;
   if (!token) throw new Error('TELEGRAM_BOT_TOKEN is not set');
-  return fetch(`https://api.telegram.org/bot${token}/${method}`, {
+
+  const res = await fetch(`https://api.telegram.org/bot${token}/${method}`, {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
     body: JSON.stringify(payload)
   });
+
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok || data.ok === false) {
+    throw new Error(data.description || `Telegram error: ${method}`);
+  }
+
+  return data;
+}
+
+function percent(part, total) {
+  if (!total) return '0.0%';
+  return ((part / total) * 100).toFixed(1) + '%';
 }
 
 function statsText(s) {
-  const cr = s.clicked ? ((s.registered / s.clicked) * 100).toFixed(1) : '0.0';
   return [
     '📊 Статистика игры',
     '',
-    `Новых игроков за 24ч: ${s.new_24h}`,
-    `Всего игроков: ${s.total_players}`,
-    `Перешли по ссылке: ${s.clicked}`,
-    `Зарегистрировались: ${s.registered}`,
-    `Дошли до блокировки: ${s.blocked}`,
-    `CR регистраций от переходов: ${cr}%`,
+    `🆕 Новых игроков за 24ч: ${s.new_24h}`,
+    `👥 Всего игроков: ${s.total_players}`,
+    '',
+    `🚧 Дошли до блокировки: ${s.blocked}`,
+    `🔗 Перешли по ссылке: ${s.clicked}`,
+    `✅ Зарегистрировались: ${s.registered}`,
+    '',
+    `📈 Блокировка → клик: ${percent(s.clicked, s.blocked)}`,
+    `📈 Клик → регистрация: ${percent(s.registered, s.clicked)}`,
+    `📈 Общий CR: ${percent(s.registered, s.total_players)}`,
     '',
     'Учёт: 1 Telegram ID = 1 игрок.'
+  ].join('\n');
+}
+
+function adminKeyboard() {
+  return {
+    inline_keyboard: [
+      [{ text: '🔄 Обновить', callback_data: 'admin_stats' }],
+      [{ text: '👥 Игроки', callback_data: 'admin_players' }],
+      [{ text: '🏆 ТОП игроков', callback_data: 'players_top' }],
+      [{ text: '📊 Воронка', callback_data: 'admin_funnel' }],
+      [{ text: '📈 Сегменты', callback_data: 'admin_segments' }]
+    ]
+  };
+}
+
+function playersKeyboard() {
+  return {
+    inline_keyboard: [
+      [{ text: '👥 Последние 20', callback_data: 'players_last20' }],
+      [{ text: '📄 Последние 100', callback_data: 'players_last100' }],
+      [{ text: '🔗 Перешедшие', callback_data: 'players_clicked' }],
+      [{ text: '✅ Зарегистрированные', callback_data: 'players_registered' }],
+      [{ text: '⬅️ Назад', callback_data: 'admin_stats' }]
+    ]
+  };
+}
+
+function playerLine(p, index) {
+  const username = p.username ? `@${p.username}` : 'без username';
+  const score = p.max_score || 0;
+  const clicked = p.clicked_at ? '🔗' : '';
+  const registered = p.registered_at ? '✅' : '';
+  return `${index}. ${p.tg_id} | ${username} | score: ${score} ${clicked}${registered}`;
+}
+
+async function playersListText(env, type, limit = 20) {
+  let title = '👥 Игроки';
+  let where = '';
+  let order = 'created_at DESC';
+
+  if (type === 'clicked') {
+    title = '🔗 Перешедшие по ссылке';
+    where = 'WHERE clicked_at IS NOT NULL';
+    order = 'clicked_at DESC';
+  }
+
+  if (type === 'registered') {
+    title = '✅ Зарегистрированные';
+    where = 'WHERE registered_at IS NOT NULL';
+    order = 'registered_at DESC';
+  }
+
+  const safeLimit = Math.min(Math.max(Number(limit) || 20, 1), 100);
+
+  const rows = await env.DB.prepare(`
+    SELECT tg_id, username, first_name, created_at, max_score, clicked_at, registered_at
+    FROM players
+    ${where}
+    ORDER BY ${order}
+    LIMIT ${safeLimit}
+  `).all();
+
+  const list = rows.results || [];
+
+  if (!list.length) {
+    return `${title}\n\nПока пусто.`;
+  }
+
+  return [
+    title,
+    '',
+    ...list.map((p, i) => playerLine(p, i + 1)),
+    '',
+    '🔎 Поиск игрока:',
+    '/find TELEGRAM_ID'
+  ].join('\n');
+}
+
+async function topPlayersText(env) {
+  const rows = await env.DB.prepare(`
+    SELECT tg_id, username, max_score, clicked_at, registered_at
+    FROM players
+    ORDER BY max_score DESC
+    LIMIT 20
+  `).all();
+
+  const list = rows.results || [];
+
+  if (!list.length) {
+    return '🏆 ТОП игроков\n\nПока пусто.';
+  }
+
+  return [
+    '🏆 ТОП игроков',
+    '',
+    ...list.map((p, i) => playerLine(p, i + 1))
+  ].join('\n');
+}
+
+async function funnelText(env) {
+  const s = await stats(env);
+
+  return [
+    '📊 Воронка',
+    '',
+    `👥 Всего игроков: ${s.total_players}`,
+    `🚧 Дошли до блокировки: ${s.blocked}`,
+    `🔗 Перешли по ссылке: ${s.clicked}`,
+    `✅ Зарегистрировались: ${s.registered}`,
+    '',
+    `📈 Игрок → блокировка: ${percent(s.blocked, s.total_players)}`,
+    `📈 Блокировка → клик: ${percent(s.clicked, s.blocked)}`,
+    `📈 Клик → регистрация: ${percent(s.registered, s.clicked)}`,
+    `📈 Игрок → регистрация: ${percent(s.registered, s.total_players)}`
+  ].join('\n');
+}
+
+async function segmentsText(env) {
+  const rows = await env.DB.prepare(`
+    SELECT
+      CASE
+        WHEN gate_after BETWEEN 15 AND 20 THEN '15–20'
+        WHEN gate_after BETWEEN 21 AND 25 THEN '21–25'
+        WHEN gate_after BETWEEN 26 AND 30 THEN '26–30'
+        ELSE 'другое'
+      END AS segment,
+      COUNT(*) AS players,
+      SUM(CASE WHEN blocked_at IS NOT NULL THEN 1 ELSE 0 END) AS blocked,
+      SUM(CASE WHEN clicked_at IS NOT NULL THEN 1 ELSE 0 END) AS clicked,
+      SUM(CASE WHEN registered_at IS NOT NULL THEN 1 ELSE 0 END) AS registered
+    FROM players
+    GROUP BY segment
+    ORDER BY segment
+  `).all();
+
+  const list = rows.results || [];
+
+  if (!list.length) {
+    return '📈 Сегменты\n\nПока нет данных.';
+  }
+
+  return [
+    '📈 Сегменты по моменту блокировки',
+    '',
+    ...list.map(r => [
+      `🎯 ${r.segment}`,
+      `Игроков: ${r.players || 0}`,
+      `Блок: ${r.blocked || 0}`,
+      `Клик: ${r.clicked || 0}`,
+      `Рега: ${r.registered || 0}`,
+      `CR: ${percent(r.registered || 0, r.players || 0)}`
+    ].join('\n')),
+  ].join('\n\n');
+}
+
+async function findPlayerText(env, tgId) {
+  const id = cleanId(tgId);
+  if (!id) return 'Неверный Telegram ID. Пример:\n/find 123456789';
+
+  const p = await env.DB.prepare(`
+    SELECT *
+    FROM players
+    WHERE tg_id = ?
+  `).bind(id).first();
+
+  if (!p) return `Игрок ${id} не найден.`;
+
+  const username = p.username ? `@${p.username}` : 'нет';
+  const firstName = p.first_name || 'нет';
+
+  return [
+    '👤 Игрок',
+    '',
+    `ID: ${p.tg_id}`,
+    `Username: ${username}`,
+    `Имя: ${firstName}`,
+    '',
+    `Рекорд: ${p.max_score || 0}`,
+    `Блокировка после: ${p.gate_after || '-'}`,
+    '',
+    `Дошёл до блокировки: ${p.blocked_at ? 'Да' : 'Нет'}`,
+    `Перешёл по ссылке: ${p.clicked_at ? 'Да' : 'Нет'}`,
+    `Зарегистрировался: ${p.registered_at ? 'Да' : 'Нет'}`
   ].join('\n');
 }
 
@@ -215,31 +415,133 @@ async function botWebhook(request, env) {
 
   if (update.callback_query) {
     await sendTelegram(env, 'answerCallbackQuery', { callback_query_id: update.callback_query.id });
-    if (update.callback_query.data === 'admin_stats' && isAdmin) {
+
+    if (!isAdmin) return text('ok');
+
+    const data = update.callback_query.data;
+
+    if (data === 'admin_stats') {
       const s = await stats(env);
-      await sendTelegram(env, 'editMessageText', {
+      await sendTelegram(env, 'sendMessage', {
         chat_id: chatId,
-        message_id: msg.message_id,
         text: statsText(s),
-        reply_markup: { inline_keyboard: [[{ text: '🔄 Обновить', callback_data: 'admin_stats' }]] }
+        reply_markup: adminKeyboard()
       });
+      return text('ok');
     }
+
+    if (data === 'admin_players') {
+      await sendTelegram(env, 'sendMessage', {
+        chat_id: chatId,
+        text: '👥 Раздел игроков',
+        reply_markup: playersKeyboard()
+      });
+      return text('ok');
+    }
+
+    if (data === 'players_last20') {
+      await sendTelegram(env, 'sendMessage', {
+        chat_id: chatId,
+        text: await playersListText(env, 'last', 20),
+        reply_markup: playersKeyboard()
+      });
+      return text('ok');
+    }
+
+    if (data === 'players_last100') {
+      await sendTelegram(env, 'sendMessage', {
+        chat_id: chatId,
+        text: await playersListText(env, 'last', 100),
+        reply_markup: playersKeyboard()
+      });
+      return text('ok');
+    }
+
+    if (data === 'players_clicked') {
+      await sendTelegram(env, 'sendMessage', {
+        chat_id: chatId,
+        text: await playersListText(env, 'clicked', 100),
+        reply_markup: playersKeyboard()
+      });
+      return text('ok');
+    }
+
+    if (data === 'players_registered') {
+      await sendTelegram(env, 'sendMessage', {
+        chat_id: chatId,
+        text: await playersListText(env, 'registered', 100),
+        reply_markup: playersKeyboard()
+      });
+      return text('ok');
+    }
+
+    if (data === 'players_top') {
+      await sendTelegram(env, 'sendMessage', {
+        chat_id: chatId,
+        text: await topPlayersText(env),
+        reply_markup: adminKeyboard()
+      });
+      return text('ok');
+    }
+
+    if (data === 'admin_funnel') {
+      await sendTelegram(env, 'sendMessage', {
+        chat_id: chatId,
+        text: await funnelText(env),
+        reply_markup: adminKeyboard()
+      });
+      return text('ok');
+    }
+
+    if (data === 'admin_segments') {
+      await sendTelegram(env, 'sendMessage', {
+        chat_id: chatId,
+        text: await segmentsText(env),
+        reply_markup: adminKeyboard()
+      });
+      return text('ok');
+    }
+
     return text('ok');
   }
 
-  const textMsg = String(update.message?.text || '');
+  const textMsg = String(update.message?.text || '').trim();
+
   if (textMsg.startsWith('/admin')) {
     if (!isAdmin) {
       await sendTelegram(env, 'sendMessage', { chat_id: chatId, text: 'Нет доступа.' });
       return text('ok');
     }
+
     const s = await stats(env);
     await sendTelegram(env, 'sendMessage', {
       chat_id: chatId,
       text: statsText(s),
-      reply_markup: { inline_keyboard: [[{ text: '🔄 Обновить', callback_data: 'admin_stats' }]] }
+      reply_markup: adminKeyboard()
     });
     return text('ok');
+  }
+
+  if (textMsg.startsWith('/find')) {
+    if (!isAdmin) {
+      await sendTelegram(env, 'sendMessage', { chat_id: chatId, text: 'Нет доступа.' });
+      return text('ok');
+    }
+
+    const id = textMsg.split(/\s+/)[1];
+    await sendTelegram(env, 'sendMessage', {
+      chat_id: chatId,
+      text: await findPlayerText(env, id)
+    });
+    return text('ok');
+  }
+
+  if (textMsg.startsWith('/start')) {
+    await ensurePlayer(env, {
+      tg_id: from.id,
+      first_name: from.first_name,
+      username: from.username
+    });
   }
 
   await sendTelegram(env, 'sendMessage', {
