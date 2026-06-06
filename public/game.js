@@ -135,7 +135,23 @@
     tg?.openLink ? tg.openLink(window.location.origin + url) : window.open(url, '_blank');
   }
 
-  registerBtn.onclick = openOffer;
+  registerBtn.onclick = () => {
+  if (playerState.continue_on_site) {
+    openOffer();
+    return;
+  }
+
+  if (gateStep === 1) {
+    gateStep = 2;
+    gateTitle.textContent = '🎁 Бонусный режим';
+    gateText.textContent = 'Чтобы сохранить рекорд, получить дополнительные попытки и продолжить игру, зарегистрируйся на сайте.';
+    registerBtn.textContent = 'Зарегистрироваться';
+    checkRegisterBtn.classList.remove('hidden');
+    return;
+  }
+
+  openOffer();
+};
   checkRegisterBtn.onclick = async () => {
     await initPlayer();
     if (!playerState.registered) {
