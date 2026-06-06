@@ -132,15 +132,11 @@
 
       playerState = await res.json();
 
+      // Только синхронизируем рекорд.
+      // Окно регистрации теперь показывается не по счёту, а после поражений через syncLoss().
       if (playerState.whitelisted) return;
-
-      if (playerState.blocked || score >= playerState.gate_after) {
-        showGate(playerState.continue_on_site);
-      }
     } catch (e) {
-      if (!playerState.whitelisted && score >= playerState.gate_after) {
-        showGate(false);
-      }
+      // Ошибки синхронизации счёта не должны прерывать игру.
     }
   }
 
@@ -486,15 +482,20 @@
       for (const p of platforms) {
         if (p.broken) continue;
 
+        // Нижняя стартовая платформа нужна только в начале.
+        // После первого очка она больше не должна подбрасывать монстрика,
+        // иначе при падении возникает эффект невидимой платформы у травы.
+        if (p.start && score > 0) continue;
+
         const feet = player.y + player.h;
         const prevFeet = prevY + player.h;
 
         const hit =
-          player.x + player.w * 0.86 > p.x &&
-          player.x + player.w * 0.14 < p.x + p.w &&
-          prevFeet <= p.y &&
+          player.x + player.w * 0.75 > p.x + 6 &&
+          player.x + player.w * 0.25 < p.x + p.w - 6 &&
+          prevFeet <= p.y + 2 &&
           feet >= p.y &&
-          feet <= p.y + Math.max(12, p.h);
+          feet <= p.y + 8;
 
         if (hit) {
           if (p.kind === 'wood') {
@@ -553,18 +554,10 @@
 
     if (Math.random() < 0.006) addGhost(top - rnd(100, 240));
 
-    if (
-      !gateShown &&
-      !playerState.whitelisted &&
-      score >= playerState.gate_after &&
-      !playerState.registered
-    ) {
-      showGate(false);
-      syncJump();
-      return;
-    }
+    // Блокировка по счёту отключена.
+    // Теперь окно регистрации появляется только после 1–2 поражений через syncLoss().
 
-    if (player.y - cameraY > H + 120) endGame();
+    if (player.y - cameraY > H + 180) endGame();
   }
 
   function endGame() {
