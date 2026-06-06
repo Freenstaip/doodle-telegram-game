@@ -21,8 +21,10 @@
   let score = 0, best = Number(localStorage.getItem('notebookJumpBest') || 0);
   let cameraY = 0, inputX = 0, pointerDown = false;
   let player, platforms, ghosts, spawnY, lastGreenY, lastGreenX;
+
   let tgUser = tg?.initDataUnsafe?.user || null;
   let tgId = tgUser?.id ? String(tgUser.id) : (localStorage.getItem('debugTgId') || '');
+
   if (!tgId) {
     tgId = String(Math.floor(100000000 + Math.random() * 900000000));
     localStorage.setItem('debugTgId', tgId);
@@ -68,10 +70,16 @@
   function loadAssets() {
     return Promise.all(Object.entries(ASSETS).map(([key, src]) => new Promise(resolve => {
       const image = new Image();
-      image.onload = () => { img[key] = image; resolve(); };
+      image.onload = () => {
+        img[key] = image;
+        resolve();
+      };
       image.onerror = resolve;
       image.src = src;
-    }))).then(() => { assetsReady = true; draw(); });
+    }))).then(() => {
+      assetsReady = true;
+      draw();
+    });
   }
 
   function resize() {
@@ -233,8 +241,31 @@
     score = 0;
     cameraY = 0;
     lossSyncedForRun = false;
-    player = { x: W / 2 - 22, y: H - 185, w: 44, h: 74, vx: 0, vy: -11.8, facing: 1 };
-    platforms = [{ x: W / 2 - 58, y: H - 120, w: 112, h: 28, kind: 'grass', start: true, scored: true, broken: false }];
+    lastSyncScore = -1;
+
+    player = {
+      x: W / 2 - 22,
+      y: H - 185,
+      w: 44,
+      h: 74,
+      vx: 0,
+      vy: -11.8,
+      facing: 1
+    };
+
+    platforms = [
+      {
+        x: W / 2 - 58,
+        y: H - 120,
+        w: 112,
+        h: 28,
+        kind: 'grass',
+        start: true,
+        scored: true,
+        broken: false
+      }
+    ];
+
     ghosts = [];
     spawnY = H - 220;
     lastGreenY = H - 120;
@@ -245,7 +276,9 @@
       spawnY -= nextSpacing(spawnY);
     }
 
-    for (let y = H - 520; y > -2500; y -= rnd(430, 620)) addGhost(y);
+    for (let y = H - 520; y > -2500; y -= rnd(430, 620)) {
+      addGhost(y);
+    }
   }
 
   function nextSpacing(y) {
@@ -274,9 +307,20 @@
     const x = kind === 'grass' ? safeGreenX(w) : rnd(PLAY_LEFT + SAFE_MARGIN, PLAY_RIGHT - w - SAFE_MARGIN);
 
     const p = {
-      x, y, baseX: x, baseY: y, w, h: kind === 'wood' ? 24 : 30,
-      kind, start: false, scored: false, broken: false,
-      move: 'none', t: Math.random() * Math.PI * 2, range: 0, speed: 0
+      x,
+      y,
+      baseX: x,
+      baseY: y,
+      w,
+      h: kind === 'wood' ? 24 : 30,
+      kind,
+      start: false,
+      scored: false,
+      broken: false,
+      move: 'none',
+      t: Math.random() * Math.PI * 2,
+      range: 0,
+      speed: 0
     };
 
     if (kind === 'grass' && !mustBeGreen && Math.random() < movingChanceAt(y)) {
@@ -285,7 +329,10 @@
       p.speed = rnd(0.016, 0.027 + d * 0.018);
 
       if (p.move === 'horizontal') {
-        p.baseX = Math.max(PLAY_LEFT + SAFE_MARGIN + p.range, Math.min(PLAY_RIGHT - SAFE_MARGIN - p.w - p.range, p.baseX));
+        p.baseX = Math.max(
+          PLAY_LEFT + SAFE_MARGIN + p.range,
+          Math.min(PLAY_RIGHT - SAFE_MARGIN - p.w - p.range, p.baseX)
+        );
         p.x = p.baseX;
       }
     }
@@ -307,7 +354,10 @@
       p.t += p.speed * (1 + d * 0.75);
 
       if (p.move === 'horizontal') {
-        p.x = Math.max(PLAY_LEFT + SAFE_MARGIN, Math.min(PLAY_RIGHT - p.w - SAFE_MARGIN, p.baseX + Math.sin(p.t) * p.range));
+        p.x = Math.max(
+          PLAY_LEFT + SAFE_MARGIN,
+          Math.min(PLAY_RIGHT - p.w - SAFE_MARGIN, p.baseX + Math.sin(p.t) * p.range)
+        );
       }
 
       if (p.move === 'vertical') {
@@ -328,7 +378,10 @@
         p.move = Math.random() < 0.24 + d * 0.16 ? 'vertical' : 'horizontal';
         p.range = p.move === 'vertical' ? rnd(14, 26 + d * 10) : rnd(28, 54 + d * 34);
         p.speed = rnd(0.016, 0.026 + d * 0.018);
-        p.baseX = Math.max(PLAY_LEFT + SAFE_MARGIN + p.range, Math.min(PLAY_RIGHT - SAFE_MARGIN - p.w - p.range, p.baseX || p.x));
+        p.baseX = Math.max(
+          PLAY_LEFT + SAFE_MARGIN + p.range,
+          Math.min(PLAY_RIGHT - SAFE_MARGIN - p.w - p.range, p.baseX || p.x)
+        );
         p.x = p.baseX;
         p.baseY = p.baseY || p.y;
       }
@@ -341,7 +394,7 @@
       y,
       w: 54,
       h: 88,
-      vx: Math.random() < .5 ? -0.55 : 0.55
+      vx: Math.random() < 0.5 ? -0.55 : 0.55
     });
   }
 
@@ -407,6 +460,9 @@
     maybeUpgradeDifficultyPlatforms();
 
     const d = difficultyAtScore();
+
+    const prevY = player.y;
+
     player.vx += inputX * (0.55 - d * 0.06);
 
     if (inputX < -0.08) player.facing = -1;
@@ -425,11 +481,14 @@
         if (p.broken) continue;
 
         const feet = player.y + player.h;
+        const prevFeet = prevY + player.h;
+
         const hit =
-          player.x + player.w * .86 > p.x &&
-          player.x + player.w * .14 < p.x + p.w &&
-          feet > p.y &&
-          feet < p.y + p.h + 16;
+          player.x + player.w * 0.86 > p.x &&
+          player.x + player.w * 0.14 < p.x + p.w &&
+          prevFeet <= p.y &&
+          feet >= p.y &&
+          feet <= p.y + Math.max(12, p.h);
 
         if (hit) {
           if (p.kind === 'wood') {
@@ -444,12 +503,12 @@
             p.scored = true;
             score += 1;
 
-if (
-  score % 3 === 0 ||
-  score >= playerState.gate_after - 2
-) {
-  syncJump();
-}
+            if (
+              score % 3 === 0 ||
+              score >= playerState.gate_after - 2
+            ) {
+              syncJump();
+            }
           }
 
           break;
@@ -462,12 +521,14 @@ if (
       if (g.x < PLAY_LEFT || g.x + g.w > PLAY_RIGHT) g.vx *= -1;
 
       const hit =
-        player.x + player.w * .75 > g.x &&
-        player.x + player.w * .25 < g.x + g.w &&
-        player.y + player.h * .85 > g.y &&
-        player.y + player.h * .15 < g.y + g.h;
+        player.x + player.w * 0.75 > g.x &&
+        player.x + player.w * 0.25 < g.x + g.w &&
+        player.y + player.h * 0.85 > g.y &&
+        player.y + player.h * 0.15 < g.y + g.h;
 
-      if (hit && player.vy > 0 && player.y + player.h * .15 > g.y + g.h) jump(-14.2);
+      if (hit && player.vy > 0 && player.y + player.h * 0.15 > g.y + g.h) {
+        jump(-14.2);
+      }
     }
 
     const targetCam = player.y - H * 0.42;
@@ -484,7 +545,7 @@ if (
       spawnY -= nextSpacing(spawnY);
     }
 
-    if (Math.random() < .006) addGhost(top - rnd(100, 240));
+    if (Math.random() < 0.006) addGhost(top - rnd(100, 240));
 
     if (
       !gateShown &&
@@ -493,8 +554,8 @@ if (
       !playerState.registered
     ) {
       showGate(false);
-syncJump();
-return;
+      syncJump();
+      return;
     }
 
     if (player.y - cameraY > H + 180) endGame();
@@ -548,7 +609,13 @@ return;
     const image = p.kind === 'wood' ? img.wood : img.grass;
 
     if (assetsReady && image) {
-      ctx.drawImage(image, p.x, y - (p.kind === 'grass' ? 4 : 2), p.w, p.h + (p.kind === 'grass' ? 10 : 6));
+      ctx.drawImage(
+        image,
+        p.x,
+        y - (p.kind === 'grass' ? 4 : 2),
+        p.w,
+        p.h + (p.kind === 'grass' ? 10 : 6)
+      );
     }
   }
 
