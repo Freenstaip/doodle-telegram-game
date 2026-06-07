@@ -189,7 +189,7 @@ async function playerJump(request, env) {
   const now = Date.now();
 
   // Блокировка по счёту отключена.
-  // Здесь только обновляем рекорд. Окно регистрации появляется после поражений через /api/player/loss.
+  // Тут только обновляем рекорд. Окно регистрации появляется после поражений через /api/player/loss.
   await env.DB.prepare(`
     UPDATE players
     SET max_score = MAX(max_score, ?),
@@ -937,3 +937,4 @@ export default {
     }
   }
 };
+
