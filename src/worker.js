@@ -34,7 +34,7 @@ function randomGate() {
 }
 
 function randomLossGate() {
-  return 1 + Math.floor(Math.random() * 2); // 1–2 поражения
+  return 1 + Math.floor(Math.random() * 3); // 1–3 поражения
 }
 
 function cleanId(value) {
