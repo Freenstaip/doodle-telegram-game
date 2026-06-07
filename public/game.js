@@ -132,11 +132,11 @@
 
       playerState = await res.json();
 
-      // Только синхронизируем рекорд.
-      // Окно регистрации теперь показывается не по счёту, а после поражений через syncLoss().
+      // Ð¢Ð¾Ð»ÑÐºÐ¾ ÑÐ¸Ð½ÑÑÐ¾Ð½Ð¸Ð·Ð¸ÑÑÐµÐ¼ ÑÐµÐºÐ¾ÑÐ´.
+      // ÐÐºÐ½Ð¾ ÑÐµÐ³Ð¸ÑÑÑÐ°ÑÐ¸Ð¸ ÑÐµÐ¿ÐµÑÑ Ð¿Ð¾ÐºÐ°Ð·ÑÐ²Ð°ÐµÑÑÑ Ð¿Ð¾ÑÐ»Ðµ Ð¿Ð¾ÑÐ°Ð¶ÐµÐ½Ð¸Ð¹ ÑÐµÑÐµÐ· syncLoss().
       if (playerState.whitelisted) return;
     } catch (e) {
-      // Ошибки синхронизации счёта не должны прерывать игру.
+      // ÐÑÐ¸Ð±ÐºÐ° ÑÐ¸Ð½ÑÑÐ¾Ð½Ð¸Ð·Ð°ÑÐ¸Ð¸ ÑÑÑÑÐ° Ð½Ðµ Ð´Ð¾Ð»Ð¶Ð½Ð° Ð·Ð°Ð²ÐµÑÑÐ°ÑÑ Ð¸Ð³ÑÑ.
     }
   }
 
@@ -173,18 +173,18 @@
     gate.classList.remove('hidden');
 
     if (continueOnSite) {
-      gateTitle.textContent = 'Регистрация найдена';
-      gateText.textContent = 'Отлично! Дальше игру нужно продолжить проходить на сайте.';
-      registerBtn.textContent = 'Продолжить на сайте';
+      gateTitle.textContent = 'Ð ÐµÐ³Ð¸ÑÑÑÐ°ÑÐ¸Ñ Ð½Ð°Ð¹Ð´ÐµÐ½Ð°';
+      gateText.textContent = 'ÐÑÐ»Ð¸ÑÐ½Ð¾! ÐÐ°Ð»ÑÑÐµ Ð¸Ð³ÑÑ Ð½ÑÐ¶Ð½Ð¾ Ð¿ÑÐ¾Ð´Ð¾Ð»Ð¶Ð¸ÑÑ Ð¿ÑÐ¾ÑÐ¾Ð´Ð¸ÑÑ Ð½Ð° ÑÐ°Ð¹ÑÐµ.';
+      registerBtn.textContent = 'ÐÑÐ¾Ð´Ð¾Ð»Ð¶Ð¸ÑÑ Ð½Ð° ÑÐ°Ð¹ÑÐµ';
       checkRegisterBtn.classList.add('hidden');
       gateStep = 2;
       return;
     }
 
     gateStep = 1;
-    gateTitle.textContent = '🏆 Рекорд сохранён';
-    gateText.textContent = `Твой результат: ${score}. Ты попал в рейтинг игроков. Нажми продолжить, чтобы открыть бонусный режим.`;
-    registerBtn.textContent = 'Продолжить';
+    gateTitle.textContent = 'ð Ð ÐµÐºÐ¾ÑÐ´ ÑÐ¾ÑÑÐ°Ð½ÑÐ½';
+    gateText.textContent = `Ð¢Ð²Ð¾Ð¹ ÑÐµÐ·ÑÐ»ÑÑÐ°Ñ: ${score}. Ð¢Ñ Ð¿Ð¾Ð¿Ð°Ð» Ð² ÑÐµÐ¹ÑÐ¸Ð½Ð³ Ð¸Ð³ÑÐ¾ÐºÐ¾Ð². ÐÐ°Ð¶Ð¼Ð¸ Ð¿ÑÐ¾Ð´Ð¾Ð»Ð¶Ð¸ÑÑ, ÑÑÐ¾Ð±Ñ Ð¾ÑÐºÑÑÑÑ Ð±Ð¾Ð½ÑÑÐ½ÑÐ¹ ÑÐµÐ¶Ð¸Ð¼.`;
+    registerBtn.textContent = 'ÐÑÐ¾Ð´Ð¾Ð»Ð¶Ð¸ÑÑ';
     checkRegisterBtn.classList.add('hidden');
   }
 
@@ -201,9 +201,9 @@
 
     if (gateStep === 1) {
       gateStep = 2;
-      gateTitle.textContent = '🎁 Бонусный режим';
-      gateText.textContent = 'Чтобы сохранить рекорд, получить дополнительные попытки и продолжить игру, зарегистрируйся на сайте.';
-      registerBtn.textContent = 'Зарегистрироваться';
+      gateTitle.textContent = 'ð ÐÐ¾Ð½ÑÑÐ½ÑÐ¹ ÑÐµÐ¶Ð¸Ð¼';
+      gateText.textContent = 'Ð§ÑÐ¾Ð±Ñ ÑÐ¾ÑÑÐ°Ð½Ð¸ÑÑ ÑÐµÐºÐ¾ÑÐ´, Ð¿Ð¾Ð»ÑÑÐ¸ÑÑ Ð´Ð¾Ð¿Ð¾Ð»Ð½Ð¸ÑÐµÐ»ÑÐ½ÑÐµ Ð¿Ð¾Ð¿ÑÑÐºÐ¸ Ð¸ Ð¿ÑÐ¾Ð´Ð¾Ð»Ð¶Ð¸ÑÑ Ð¸Ð³ÑÑ, Ð·Ð°ÑÐµÐ³Ð¸ÑÑÑÐ¸ÑÑÐ¹ÑÑ Ð½Ð° ÑÐ°Ð¹ÑÐµ.';
+      registerBtn.textContent = 'ÐÐ°ÑÐµÐ³Ð¸ÑÑÑÐ¸ÑÐ¾Ð²Ð°ÑÑÑÑ';
       checkRegisterBtn.classList.remove('hidden');
       return;
     }
@@ -215,8 +215,8 @@
     await initPlayer();
 
     if (!playerState.registered) {
-      tg?.showAlert?.('Регистрация пока не найдена. Подожди немного и нажми ещё раз.');
-      gateText.textContent = 'Регистрация пока не найдена. Подожди немного и нажми «Я зарегистрировался» ещё раз.';
+      tg?.showAlert?.('Ð ÐµÐ³Ð¸ÑÑÑÐ°ÑÐ¸Ñ Ð¿Ð¾ÐºÐ° Ð½Ðµ Ð½Ð°Ð¹Ð´ÐµÐ½Ð°. ÐÐ¾Ð´Ð¾Ð¶Ð´Ð¸ Ð½ÐµÐ¼Ð½Ð¾Ð³Ð¾ Ð¸ Ð½Ð°Ð¶Ð¼Ð¸ ÐµÑÑ ÑÐ°Ð·.');
+      gateText.textContent = 'Ð ÐµÐ³Ð¸ÑÑÑÐ°ÑÐ¸Ñ Ð¿Ð¾ÐºÐ° Ð½Ðµ Ð½Ð°Ð¹Ð´ÐµÐ½Ð°. ÐÐ¾Ð´Ð¾Ð¶Ð´Ð¸ Ð½ÐµÐ¼Ð½Ð¾Ð³Ð¾ Ð¸ Ð½Ð°Ð¶Ð¼Ð¸ Â«Ð¯ Ð·Ð°ÑÐµÐ³Ð¸ÑÑÑÐ¸ÑÐ¾Ð²Ð°Ð»ÑÑÂ» ÐµÑÑ ÑÐ°Ð·.';
     }
   };
 
@@ -436,9 +436,9 @@
 
   window.addEventListener('keyup', () => inputX = 0);
 
-  // Отключено: на Android Telegram WebView часто даёт постоянный наклон,
-  // из-за чего монстрика тянет влево/вправо без касания экрана.
-  // Управление остаётся через тап/свайп влево-вправо.
+  // ÐÑÐºÐ»ÑÑÐµÐ½Ð¾: Ð½Ð° Android Telegram WebView ÑÐ°ÑÑÐ¾ Ð´Ð°ÑÑ Ð¿Ð¾ÑÑÐ¾ÑÐ½Ð½ÑÐ¹ Ð½Ð°ÐºÐ»Ð¾Ð½,
+  // Ð¸Ð·-Ð·Ð° ÑÐµÐ³Ð¾ Ð¼Ð¾Ð½ÑÑÑÐ¸ÐºÐ° ÑÑÐ½ÐµÑ Ð²Ð»ÐµÐ²Ð¾/Ð²Ð¿ÑÐ°Ð²Ð¾ Ð±ÐµÐ· ÐºÐ°ÑÐ°Ð½Ð¸Ñ ÑÐºÑÐ°Ð½Ð°.
+  // Ð£Ð¿ÑÐ°Ð²Ð»ÐµÐ½Ð¸Ðµ Ð¾ÑÑÐ°ÑÑÑÑ ÑÐµÑÐµÐ· ÑÐ°Ð¿/ÑÐ²Ð°Ð¹Ð¿ Ð²Ð»ÐµÐ²Ð¾-Ð²Ð¿ÑÐ°Ð²Ð¾.
   /*
   window.addEventListener('deviceorientation', e => {
     if (typeof e.gamma === 'number') inputX = Math.max(-1, Math.min(1, e.gamma / 18));
@@ -478,14 +478,27 @@
     if (player.x < -player.w) player.x = W;
     if (player.x > W) player.x = -player.w;
 
+    // ÐÑÐ»Ð¸ Ð¼Ð¾Ð½ÑÑÑÐ¸Ðº Ð¿Ð°Ð´Ð°ÐµÑ Ð½Ð¸Ð¶Ðµ Ð²Ð¸Ð´Ð¸Ð¼Ð¾Ð³Ð¾ Ð¸Ð³ÑÐ¾Ð²Ð¾Ð³Ð¾ Ð»Ð¸ÑÑÐ°/ÑÑÐ°Ð²Ñ â ÑÑÐ¾ Ð¿ÑÐ¾Ð¸Ð³ÑÑÑ.
+    // ÐÐµ Ð´Ð°ÑÐ¼ ÐµÐ¼Ñ ÑÑÐ¿ÐµÑÑ ÑÑÐ¾Ð»ÐºÐ½ÑÑÑÑÑ ÑÐ¾ ÑÐºÑÑÑÐ¾Ð¹ Ð½Ð¸Ð¶Ð½ÐµÐ¹ Ð¿Ð»Ð°ÑÑÐ¾ÑÐ¼Ð¾Ð¹.
+    const playerScreenBottom = player.y + player.h - cameraY;
+    if (player.vy > 0 && playerScreenBottom > PLAY_BOTTOM + 18) {
+      endGame();
+      return;
+    }
+
     if (player.vy > 0) {
       for (const p of platforms) {
         if (p.broken) continue;
 
-        // Нижняя стартовая платформа нужна только в начале.
-        // После первого очка она больше не должна подбрасывать монстрика,
-        // иначе при падении возникает эффект невидимой платформы у травы.
+        const platformScreenY = p.y - cameraY;
+
+        // Ð¡ÑÐ°ÑÑÐ¾Ð²Ð°Ñ Ð½Ð¸Ð¶Ð½ÑÑ Ð¿Ð»Ð°ÑÑÐ¾ÑÐ¼Ð° Ð½ÑÐ¶Ð½Ð° ÑÐ¾Ð»ÑÐºÐ¾ Ð² Ð½Ð°ÑÐ°Ð»Ðµ.
+        // ÐÐ¾ÑÐ»Ðµ Ð¿ÐµÑÐ²Ð¾Ð³Ð¾ Ð¾ÑÐºÐ° Ð¾Ð½Ð° Ð±Ð¾Ð»ÑÑÐµ Ð½Ðµ Ð´Ð¾Ð»Ð¶Ð½Ð° Ð¿Ð¾Ð´Ð±ÑÐ°ÑÑÐ²Ð°ÑÑ.
         if (p.start && score > 0) continue;
+
+        // ÐÑÐ±Ð°Ñ Ð¿Ð»Ð°ÑÑÐ¾ÑÐ¼Ð°, ÐºÐ¾ÑÐ¾ÑÐ°Ñ ÑÐ¶Ðµ Ð½Ð¸Ð¶Ðµ Ð²Ð¸Ð´Ð¸Ð¼Ð¾Ð³Ð¾ Ð»Ð¸ÑÑÐ°/ÑÑÐ°Ð²Ñ,
+        // ÑÑÐ¸ÑÐ°ÐµÑÑÑ Ð½ÐµÐ°ÐºÑÐ¸Ð²Ð½Ð¾Ð¹ Ð¸ Ð½Ðµ Ð¼Ð¾Ð¶ÐµÑ Ð´Ð°ÑÑ Ð¿ÑÑÐ¶Ð¾Ðº.
+        if (platformScreenY > PLAY_BOTTOM - 12) continue;
 
         const feet = player.y + player.h;
         const prevFeet = prevY + player.h;
@@ -544,7 +557,11 @@
     const top = cameraY - SPAWN_AHEAD;
     const bottom = cameraY + H + 150;
 
-    platforms = platforms.filter(p => p.y < bottom && !p.broken);
+    platforms = platforms.filter(p => {
+      if (p.broken) return false;
+      if (p.start && score > 0) return false;
+      return p.y < bottom;
+    });
     ghosts = ghosts.filter(g => g.y < bottom);
 
     while (spawnY > top) {
@@ -554,8 +571,8 @@
 
     if (Math.random() < 0.006) addGhost(top - rnd(100, 240));
 
-    // Блокировка по счёту отключена.
-    // Теперь окно регистрации появляется только после 1–2 поражений через syncLoss().
+    // ÐÐ»Ð¾ÐºÐ¸ÑÐ¾Ð²ÐºÐ° Ð¿Ð¾ ÑÑÑÑÑ Ð¾ÑÐºÐ»ÑÑÐµÐ½Ð°.
+    // Ð ÐµÐ³Ð¸ÑÑÑÐ°ÑÐ¸Ñ Ð¿Ð¾ÐºÐ°Ð·ÑÐ²Ð°ÐµÑÑÑ ÑÐ¾Ð»ÑÐºÐ¾ Ð¿Ð¾ÑÐ»Ðµ Ð¿Ð¾ÑÐ°Ð¶ÐµÐ½Ð¸Ñ ÑÐµÑÐµÐ· syncLoss().
 
     if (player.y - cameraY > H + 180) endGame();
   }
@@ -570,7 +587,7 @@
     syncLoss();
 
     if (!gateShown) {
-      finalScore.textContent = `Score ${score} · Best ${best}`;
+      finalScore.textContent = `Score ${score} Â· Best ${best}`;
       over.classList.remove('hidden');
     }
   }
@@ -618,8 +635,8 @@
       return;
     }
 
-    // Fallback для Android/медленной загрузки картинок:
-    // платформа видна сразу, даже если ассеты ещё грузятся.
+    // Fallback Ð´Ð»Ñ Android/Ð¼ÐµÐ´Ð»ÐµÐ½Ð½Ð¾Ð¹ Ð·Ð°Ð³ÑÑÐ·ÐºÐ¸ ÐºÐ°ÑÑÐ¸Ð½Ð¾Ðº:
+    // Ð¿Ð»Ð°ÑÑÐ¾ÑÐ¼Ð° Ð²Ð¸Ð´Ð½Ð° ÑÑÐ°Ð·Ñ, Ð´Ð°Ð¶Ðµ ÐµÑÐ»Ð¸ Ð°ÑÑÐµÑÑ ÐµÑÑ Ð³ÑÑÐ·ÑÑÑÑ.
     ctx.save();
     ctx.fillStyle = p.kind === 'wood' ? '#9b6a2f' : '#6fbf3d';
     ctx.strokeStyle = p.kind === 'wood' ? '#5a3718' : '#2f7d22';
@@ -660,7 +677,7 @@
       return;
     }
 
-    // Fallback для Android/медленной загрузки monster.png.
+    // Fallback Ð´Ð»Ñ Android/Ð¼ÐµÐ´Ð»ÐµÐ½Ð½Ð¾Ð¹ Ð·Ð°Ð³ÑÑÐ·ÐºÐ¸ monster.png.
     ctx.save();
     ctx.fillStyle = '#7b4bd6';
     ctx.strokeStyle = '#2d1b5f';
