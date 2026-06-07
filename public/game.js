@@ -433,11 +433,9 @@
   window.addEventListener('keyup', () => inputX = 0);
 
   /*
-  /*
   window.addEventListener('deviceorientation', e => {
     if (typeof e.gamma === 'number') inputX = Math.max(-1, Math.min(1, e.gamma / 18));
   });
-  */
   */
 
   function setInput(e) {
