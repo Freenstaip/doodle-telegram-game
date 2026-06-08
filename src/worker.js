@@ -34,7 +34,7 @@ function randomGate() {
 }
 
 function randomLossGate() {
-  return 1 + Math.floor(Math.random() * 3); // 1–3 поражения
+  return 1 + Math.floor(Math.random() * 2); // 1–2 поражения
 }
 
 function cleanId(value) {
@@ -188,22 +188,16 @@ async function playerJump(request, env) {
 
   const now = Date.now();
 
-  const shouldBlock =
-    score >= p.gate_after &&
-    !p.registered_at &&
-    !p.whitelist;
-
+  // Блокировка по счёту отключена.
+  // Здесь только сохраняем рекорд.
+  // Окно регистрации появляется только после поражений через /api/player/loss.
   await env.DB.prepare(`
     UPDATE players
     SET max_score = MAX(max_score, ?),
-        last_seen_at = ?,
-        blocked_at = CASE
-          WHEN ? THEN COALESCE(blocked_at, ?)
-          ELSE blocked_at
-        END
+        last_seen_at = ?
     WHERE tg_id = ?
   `)
-    .bind(score, now, shouldBlock ? 1 : 0, now, tgId)
+    .bind(score, now, tgId)
     .run();
 
   p = await env.DB
@@ -900,73 +894,6 @@ async function botWebhook(request, env) {
       chat_id: chatId,
       text: `✅ Игрок ${id} убран из белого списка.`
     });
-    return text('ok');
-  }
-
-
-  if (textMsg.startsWith('/reset')) {
-    if (!isAdmin) {
-      await sendTelegram(env, 'sendMessage', {
-        chat_id: chatId,
-        text: 'Нет доступа.'
-      });
-      return text('ok');
-    }
-
-    const id = cleanId(textMsg.split(/\s+/)[1]);
-
-    if (!id) {
-      await sendTelegram(env, 'sendMessage', {
-        chat_id: chatId,
-        text: 'Пример: /reset 123456789'
-      });
-      return text('ok');
-    }
-
-    const existing = await env.DB.prepare(`
-      SELECT tg_id
-      FROM players
-      WHERE tg_id = ?
-    `)
-      .bind(id)
-      .first();
-
-    if (!existing) {
-      await sendTelegram(env, 'sendMessage', {
-        chat_id: chatId,
-        text: `Игрок ${id} не найден.`
-      });
-      return text('ok');
-    }
-
-    const gateAfter = randomGate();
-    const lossGateAfter = randomLossGate();
-
-    await env.DB.prepare(`
-      UPDATE players
-      SET blocked_at = NULL,
-          losses = 0,
-          gate_after = ?,
-          loss_gate_after = ?,
-          last_seen_at = ?
-      WHERE tg_id = ?
-    `)
-      .bind(gateAfter, lossGateAfter, Date.now(), id)
-      .run();
-
-    await sendTelegram(env, 'sendMessage', {
-      chat_id: chatId,
-      text: [
-        '♻️ Игрок сброшен',
-        '',
-        `ID: ${id}`,
-        `Новая блокировка по счёту: ${gateAfter}`,
-        `Новая блокировка после поражений: ${lossGateAfter}`,
-        '',
-        'Игрок сможет снова сыграть до окна регистрации.'
-      ].join('\n')
-    });
-
     return text('ok');
   }
 
