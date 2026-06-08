@@ -44,6 +44,8 @@
   let gateStep = 1;
   let lossSyncedForRun = false;
   let lastSyncScore = -1;
+  let lastFrame = 0;
+  const FRAME_INTERVAL = 22; // about 45 FPS for smoother work on weaker iPhones
 
   const PLAY_LEFT = 72;
   const PLAY_RIGHT = 366;
@@ -84,10 +86,10 @@
   }
 
   function resize() {
-    dpr = Math.min(window.devicePixelRatio || 1, 2);
-    canvas.width = Math.floor(W * dpr);
-    canvas.height = Math.floor(H * dpr);
-    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    dpr = 1;
+    canvas.width = W;
+    canvas.height = H;
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
     draw();
   }
 
@@ -399,7 +401,8 @@
     gate.classList.add('hidden');
     gateShown = false;
     cancelAnimationFrame(raf);
-    loop();
+    lastFrame = 0;
+    raf = requestAnimationFrame(loop);
   }
 
   playBtn.onclick = startGame;
@@ -444,9 +447,19 @@
     inputX = x < W / 2 ? -1 : 1;
   }
 
-  function loop() {
+  function loop(timestamp = 0) {
+    if (!running) return;
+
+    if (timestamp && timestamp - lastFrame < FRAME_INTERVAL) {
+      raf = requestAnimationFrame(loop);
+      return;
+    }
+
+    lastFrame = timestamp || performance.now();
+
     update();
     draw();
+
     if (running) raf = requestAnimationFrame(loop);
   }
 
