@@ -72,6 +72,7 @@
       const image = new Image();
       image.onload = () => {
         img[key] = image;
+        draw();
         resolve();
       };
       image.onerror = resolve;
@@ -132,15 +133,7 @@
       playerState = await res.json();
 
       if (playerState.whitelisted) return;
-
-      if (playerState.blocked || score >= playerState.gate_after) {
-        showGate(playerState.continue_on_site);
-      }
-    } catch (e) {
-      if (!playerState.whitelisted && score >= playerState.gate_after) {
-        showGate(false);
-      }
-    }
+    } catch (e) {}
   }
 
   async function syncLoss() {
@@ -179,10 +172,7 @@
       gateTitle.textContent = '\u0420\u0435\u0433\u0438\u0441\u0442\u0440\u0430\u0446\u0438\u044f \u043d\u0430\u0439\u0434\u0435\u043d\u0430';
       gateText.textContent = '\u041e\u0442\u043b\u0438\u0447\u043d\u043e! \u0414\u0430\u043b\u044c\u0448\u0435 \u0438\u0433\u0440\u0443 \u043d\u0443\u0436\u043d\u043e \u043f\u0440\u043e\u0434\u043e\u043b\u0436\u0438\u0442\u044c \u043f\u0440\u043e\u0445\u043e\u0434\u0438\u0442\u044c \u043d\u0430 \u0441\u0430\u0439\u0442\u0435.';
       registerBtn.textContent = '\u041f\u0440\u043e\u0434\u043e\u043b\u0436\u0438\u0442\u044c \u043d\u0430 \u0441\u0430\u0439\u0442\u0435';
-
       checkRegisterBtn.classList.add('hidden');
-      checkRegisterBtn.style.display = 'none';
-
       gateStep = 2;
       return;
     }
@@ -191,8 +181,6 @@
     gateTitle.textContent = '\u0420\u0435\u043a\u043e\u0440\u0434 \u0441\u043e\u0445\u0440\u0430\u043d\u0451\u043d';
     gateText.textContent = `\u0422\u0432\u043e\u0439 \u0440\u0435\u0437\u0443\u043b\u044c\u0442\u0430\u0442: ${score}. \u0422\u044b \u043f\u043e\u043f\u0430\u043b \u0432 \u0440\u0435\u0439\u0442\u0438\u043d\u0433 \u0438\u0433\u0440\u043e\u043a\u043e\u0432. \u041d\u0430\u0436\u043c\u0438 \u043f\u0440\u043e\u0434\u043e\u043b\u0436\u0438\u0442\u044c, \u0447\u0442\u043e\u0431\u044b \u043e\u0442\u043a\u0440\u044b\u0442\u044c \u0431\u043e\u043d\u0443\u0441\u043d\u044b\u0439 \u0440\u0435\u0436\u0438\u043c.`;
     registerBtn.textContent = '\u041f\u0440\u043e\u0434\u043e\u043b\u0436\u0438\u0442\u044c';
-
-    checkRegisterBtn.style.display = '';
     checkRegisterBtn.classList.add('hidden');
   }
 
@@ -212,8 +200,6 @@
       gateTitle.textContent = '\u0411\u043e\u043d\u0443\u0441\u043d\u044b\u0439 \u0440\u0435\u0436\u0438\u043c';
       gateText.textContent = '\u0427\u0442\u043e\u0431\u044b \u0441\u043e\u0445\u0440\u0430\u043d\u0438\u0442\u044c \u0440\u0435\u043a\u043e\u0440\u0434, \u043f\u043e\u043b\u0443\u0447\u0438\u0442\u044c \u0434\u043e\u043f\u043e\u043b\u043d\u0438\u0442\u0435\u043b\u044c\u043d\u044b\u0435 \u043f\u043e\u043f\u044b\u0442\u043a\u0438 \u0438 \u043f\u0440\u043e\u0434\u043e\u043b\u0436\u0438\u0442\u044c \u0438\u0433\u0440\u0443, \u0437\u0430\u0440\u0435\u0433\u0438\u0441\u0442\u0440\u0438\u0440\u0443\u0439\u0441\u044f \u043d\u0430 \u0441\u0430\u0439\u0442\u0435.';
       registerBtn.textContent = '\u0417\u0430\u0440\u0435\u0433\u0438\u0441\u0442\u0440\u0438\u0440\u043e\u0432\u0430\u0442\u044c\u0441\u044f';
-
-      checkRegisterBtn.style.display = '';
       checkRegisterBtn.classList.remove('hidden');
       return;
     }
@@ -446,9 +432,11 @@
 
   window.addEventListener('keyup', () => inputX = 0);
 
+  /*
   window.addEventListener('deviceorientation', e => {
     if (typeof e.gamma === 'number') inputX = Math.max(-1, Math.min(1, e.gamma / 18));
   });
+  */
 
   function setInput(e) {
     const r = canvas.getBoundingClientRect();
@@ -483,19 +471,29 @@
     if (player.x < -player.w) player.x = W;
     if (player.x > W) player.x = -player.w;
 
+    const playerScreenTop = player.y - cameraY;
+    if (player.vy > 0 && playerScreenTop > H - 35) {
+      endGame();
+      return;
+    }
+
     if (player.vy > 0) {
       for (const p of platforms) {
         if (p.broken) continue;
+
+        const platformScreenY = p.y - cameraY;
+        if (p.start && score > 0) continue;
+        if (platformScreenY > PLAY_BOTTOM + 6) continue;
 
         const feet = player.y + player.h;
         const prevFeet = prevY + player.h;
 
         const hit =
-          player.x + player.w * 0.86 > p.x &&
-          player.x + player.w * 0.14 < p.x + p.w &&
-          prevFeet <= p.y &&
-          feet >= p.y &&
-          feet <= p.y + Math.max(12, p.h);
+          player.x + player.w * 0.82 > p.x + 2 &&
+          player.x + player.w * 0.18 < p.x + p.w - 2 &&
+          prevFeet <= p.y + 10 &&
+          feet >= p.y - 2 &&
+          feet <= p.y + 18;
 
         if (hit) {
           if (p.kind === 'wood') {
@@ -544,7 +542,11 @@
     const top = cameraY - SPAWN_AHEAD;
     const bottom = cameraY + H + 150;
 
-    platforms = platforms.filter(p => p.y < bottom && !p.broken);
+    platforms = platforms.filter(p => {
+      if (p.broken) return false;
+      if (p.start && score > 0) return false;
+      return p.y < bottom;
+    });
     ghosts = ghosts.filter(g => g.y < bottom);
 
     while (spawnY > top) {
@@ -553,17 +555,6 @@
     }
 
     if (Math.random() < 0.006) addGhost(top - rnd(100, 240));
-
-    if (
-      !gateShown &&
-      !playerState.whitelisted &&
-      score >= playerState.gate_after &&
-      !playerState.registered
-    ) {
-      showGate(false);
-      syncJump();
-      return;
-    }
 
     if (player.y - cameraY > H + 180) endGame();
   }
@@ -578,7 +569,7 @@
     syncLoss();
 
     if (!gateShown) {
-      finalScore.textContent = `Score ${score} Â· Best ${best}`;
+      finalScore.textContent = `Score ${score} | Best ${best}`;
       over.classList.remove('hidden');
     }
   }
@@ -615,7 +606,7 @@
     const y = p.y - cameraY;
     const image = p.kind === 'wood' ? img.wood : img.grass;
 
-    if (assetsReady && image) {
+    if (image) {
       ctx.drawImage(
         image,
         p.x,
@@ -623,14 +614,32 @@
         p.w,
         p.h + (p.kind === 'grass' ? 10 : 6)
       );
+      return;
     }
+
+    ctx.save();
+    ctx.fillStyle = p.kind === 'wood' ? '#9b6a2f' : '#6fbf3d';
+    ctx.strokeStyle = p.kind === 'wood' ? '#5a3718' : '#2f7d22';
+    ctx.lineWidth = 2;
+
+    if (typeof ctx.roundRect === 'function') {
+      ctx.beginPath();
+      ctx.roundRect(p.x, y, p.w, p.h, 10);
+      ctx.fill();
+      ctx.stroke();
+    } else {
+      ctx.fillRect(p.x, y, p.w, p.h);
+      ctx.strokeRect(p.x, y, p.w, p.h);
+    }
+
+    ctx.restore();
   }
 
   function drawPlayer() {
     const x = player.x;
     const y = player.y - cameraY;
 
-    if (assetsReady && img.monster) {
+    if (img.monster) {
       const dw = player.w + 20;
       const dh = player.h + 24;
 
@@ -645,7 +654,37 @@
       }
 
       ctx.restore();
+      return;
     }
+
+    ctx.save();
+    ctx.fillStyle = '#7b4bd6';
+    ctx.strokeStyle = '#2d1b5f';
+    ctx.lineWidth = 3;
+
+    if (typeof ctx.roundRect === 'function') {
+      ctx.beginPath();
+      ctx.roundRect(x, y, player.w, player.h, 10);
+      ctx.fill();
+      ctx.stroke();
+    } else {
+      ctx.fillRect(x, y, player.w, player.h);
+      ctx.strokeRect(x, y, player.w, player.h);
+    }
+
+    ctx.fillStyle = '#fff176';
+    ctx.strokeStyle = '#2d1b5f';
+    ctx.beginPath();
+    ctx.arc(x + player.w * 0.55, y + player.h * 0.32, 10, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+
+    ctx.fillStyle = '#111';
+    ctx.beginPath();
+    ctx.arc(x + player.w * 0.55, y + player.h * 0.32, 4, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.restore();
   }
 
   function drawGhost(g) {
