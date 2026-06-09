@@ -280,8 +280,8 @@ async function botWebhook(request, env) {
   if (msgText.startsWith('/start')) await ensurePlayer(env, { tg_id: from.id, first_name: from.first_name, username: from.username });
   await sendTelegram(env, 'sendMessage', {
     chat_id: chatId,
-    text: 'Запусти игру кнопкой ниже 👇',
-    reply_markup: { inline_keyboard: [[{ text: '🎮 Играть', web_app: { url: baseUrl + '/' } }]] }
+    text: 'Launch the game using the button below 👇',
+    reply_markup: { inline_keyboard: [[{ text: '🎮 Play', web_app: { url: baseUrl + '/' } }]] }
   });
   return text('ok');
 }
