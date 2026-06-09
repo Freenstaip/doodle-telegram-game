@@ -167,15 +167,15 @@
     gate.classList.remove('hidden');
 
     if (continueOnSite || playerState.registered) {
-      gateTitle.textContent = 'Ð ÐµÐ³Ð¸ÑÑÑÐ°ÑÐ¸Ñ Ð½Ð°Ð¹Ð´ÐµÐ½Ð°';
-      gateText.textContent = 'ÐÑ Ð·Ð°ÑÐµÐ³Ð¸ÑÑÑÐ¸ÑÐ¾Ð²Ð°Ð½Ñ, Ð¸Ð³ÑÑ Ð¼Ð¾Ð¶Ð½Ð¾ Ð¿ÑÐ¾Ð´Ð¾Ð»Ð¶Ð¸ÑÑ Ð½Ð° ÑÐ°Ð¹ÑÐµ';
-      registerBtn.textContent = 'ÐÐ³ÑÐ°ÑÑ Ð½Ð° ÑÐ°Ð¹ÑÐµ';
+      gateTitle.textContent = '\u0420\u0435\u0433\u0438\u0441\u0442\u0440\u0430\u0446\u0438\u044f \u043d\u0430\u0439\u0434\u0435\u043d\u0430';
+      gateText.textContent = '\u0412\u044b \u0437\u0430\u0440\u0435\u0433\u0438\u0441\u0442\u0440\u0438\u0440\u043e\u0432\u0430\u043d\u044b, \u0438\u0433\u0440\u0443 \u043c\u043e\u0436\u043d\u043e \u043f\u0440\u043e\u0434\u043e\u043b\u0436\u0438\u0442\u044c \u043d\u0430 \u0441\u0430\u0439\u0442\u0435';
+      registerBtn.textContent = '\u0418\u0433\u0440\u0430\u0442\u044c \u043d\u0430 \u0441\u0430\u0439\u0442\u0435';
       return;
     }
 
-    gateTitle.textContent = 'Ð ÐµÐ³Ð¸ÑÑÑÐ°ÑÐ¸Ñ';
-    gateText.textContent = 'ÐÐ»Ñ Ð¿ÑÐ¾Ð´Ð¾Ð»Ð¶ÐµÐ½Ð¸Ñ Ð¸Ð³ÑÑ Ð½ÐµÐ¾Ð±ÑÐ¾Ð´Ð¸Ð¼Ð¾ Ð·Ð°ÑÐµÐ³Ð¸ÑÑÑÐ¸ÑÐ¾Ð²Ð°ÑÑÑÑ';
-    registerBtn.textContent = 'ÐÐ°ÑÐµÐ³Ð¸ÑÑÑÐ¸ÑÐ¾Ð²Ð°ÑÑÑÑ';
+    gateTitle.textContent = '\u0420\u0435\u0433\u0438\u0441\u0442\u0440\u0430\u0446\u0438\u044f';
+    gateText.textContent = '\u0414\u043b\u044f \u043f\u0440\u043e\u0434\u043e\u043b\u0436\u0435\u043d\u0438\u044f \u0438\u0433\u0440\u044b \u043d\u0435\u043e\u0431\u0445\u043e\u0434\u0438\u043c\u043e \u0437\u0430\u0440\u0435\u0433\u0438\u0441\u0442\u0440\u0438\u0440\u043e\u0432\u0430\u0442\u044c\u0441\u044f';
+    registerBtn.textContent = '\u0417\u0430\u0440\u0435\u0433\u0438\u0441\u0442\u0440\u0438\u0440\u043e\u0432\u0430\u0442\u044c\u0441\u044f';
   }
 
   function openOffer() {
