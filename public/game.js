@@ -784,7 +784,7 @@
     ctx.strokeStyle = '#222';
     ctx.font = '22px "Comic Sans MS", sans-serif';
     ctx.textAlign = 'center';
-    ctx.fillText('TAP LEFT / RIGHT', W / 2, H - 105);
+    ctx.fillText('TAP LEFT - RIGHT', W / 2, H - 105);
     ctx.beginPath();
     ctx.moveTo(W / 2, H - 86);
     ctx.quadraticCurveTo(W / 2 + 22, H - 116, W / 2 + 7, H - 137);
