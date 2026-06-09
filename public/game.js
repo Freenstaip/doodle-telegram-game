@@ -40,6 +40,8 @@
   };
 
   let gateShown = false;
+  let registrationCheckTimer = 0;
+  let refreshingRegistration = false;
   let lossSyncedForRun = false;
   let lastSyncScore = -1;
 
@@ -167,6 +169,11 @@
     gate.classList.remove('hidden');
 
     if (continueOnSite || playerState.registered) {
+      if (registrationCheckTimer) {
+        clearInterval(registrationCheckTimer);
+        registrationCheckTimer = 0;
+      }
+
       gateTitle.textContent = '\u0420\u0435\u0433\u0438\u0441\u0442\u0440\u0430\u0446\u0438\u044f \u043d\u0430\u0439\u0434\u0435\u043d\u0430';
       gateText.textContent = '\u0412\u044b \u0437\u0430\u0440\u0435\u0433\u0438\u0441\u0442\u0440\u0438\u0440\u043e\u0432\u0430\u043d\u044b, \u0438\u0433\u0440\u0443 \u043c\u043e\u0436\u043d\u043e \u043f\u0440\u043e\u0434\u043e\u043b\u0436\u0438\u0442\u044c \u043d\u0430 \u0441\u0430\u0439\u0442\u0435';
       registerBtn.textContent = '\u0418\u0433\u0440\u0430\u0442\u044c \u043d\u0430 \u0441\u0430\u0439\u0442\u0435';
@@ -178,12 +185,48 @@
     registerBtn.textContent = '\u0417\u0430\u0440\u0435\u0433\u0438\u0441\u0442\u0440\u0438\u0440\u043e\u0432\u0430\u0442\u044c\u0441\u044f';
   }
 
+  async function refreshRegistrationStatus() {
+    if (!gateShown || playerState.registered || refreshingRegistration) return;
+    refreshingRegistration = true;
+
+    try {
+      await initPlayer();
+      if (playerState.registered || playerState.continue_on_site) {
+        showGate(true);
+      }
+    } finally {
+      refreshingRegistration = false;
+    }
+  }
+
+  function startRegistrationChecks() {
+    refreshRegistrationStatus();
+
+    if (registrationCheckTimer) clearInterval(registrationCheckTimer);
+    registrationCheckTimer = setInterval(refreshRegistrationStatus, 3000);
+    setTimeout(() => {
+      if (registrationCheckTimer && !playerState.registered) {
+        clearInterval(registrationCheckTimer);
+        registrationCheckTimer = 0;
+      }
+    }, 120000);
+  }
+
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden) refreshRegistrationStatus();
+  });
+  window.addEventListener('focus', refreshRegistrationStatus);
+
   function openOffer() {
     const url = `/go?tg_id=${encodeURIComponent(tgId)}`;
     tg?.openLink ? tg.openLink(window.location.origin + url) : window.open(url, '_blank');
   }
 
   registerBtn.onclick = () => {
+    if (!playerState.registered && !playerState.continue_on_site) {
+      startRegistrationChecks();
+    }
+
     openOffer();
   };
 
