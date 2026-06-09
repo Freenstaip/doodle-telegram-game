@@ -630,15 +630,15 @@ async function pushUnregistered(env, chatId, baseUrl) {
       await sendTelegram(env, 'sendMessage', {
         chat_id: p.tg_id,
         text: [
-          '🔥 Твой рекорд сохранён!',
+          '🔥 Your record is saved!',
           '',
-          `Твой результат: ${p.max_score || 0}`,
+          `Your result: ${p.max_score || 0}`,
           '',
-          'Ты был близко к ТОПу. Продолжи игру и забери бонус 👇'
+          'You were close to the top. Keep playing and get your bonus 👇'
         ].join('\n'),
         reply_markup: {
           inline_keyboard: [[
-            { text: '🎮 Продолжить игру', web_app: { url: baseUrl + '/' } }
+            { text: '🎮 Continue game', web_app: { url: baseUrl + '/' } }
           ]]
         }
       });
