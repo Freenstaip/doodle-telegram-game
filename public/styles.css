@@ -19,3 +19,9 @@ html, body, canvas, .overlay, .card, button, p, h1 {
   user-select: none;
   -webkit-touch-callout: none;
 }
+
+.game-search-label { display:block; margin-bottom:7px; }
+.game-search-row { display:flex; align-items:center; justify-content:center; gap:8px; flex-wrap:wrap; margin-top:3px; }
+.copy-game-name { border-radius:10px; padding:7px 10px; font-size:13px; line-height:1; box-shadow:0 3px 0 #b99511; }
+.copy-game-name:active { transform:translateY(2px); box-shadow:0 1px 0 #b99511; }
+.copy-game-name-status { display:block; min-height:18px; margin-top:7px; font-size:13px; font-weight:700; color:#fff; }
