@@ -782,7 +782,7 @@
     ctx.save();
     ctx.fillStyle = '#222';
     ctx.strokeStyle = '#222';
-    ctx.font = '22px "Comic Sans MS", sans-serif';
+    ctx.font = '25px "Comic Sans MS Bold", sans-serif';
     ctx.textAlign = 'center';
     ctx.fillText('TAP LEFT - RIGHT', W / 2, H - 105);
     ctx.beginPath();
