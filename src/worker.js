@@ -975,10 +975,10 @@ async function botWebhook(request, env) {
 
   await sendTelegram(env, 'sendMessage', {
     chat_id: chatId,
-    text: 'Запусти игру кнопкой ниже 👇',
+    text: 'Launch the game using the button below 👇',
     reply_markup: {
       inline_keyboard: [[
-        { text: '🎮 Играть', web_app: { url: baseUrl + '/' } }
+        { text: '🎮 Play', web_app: { url: baseUrl + '/' } }
       ]]
     }
   });
