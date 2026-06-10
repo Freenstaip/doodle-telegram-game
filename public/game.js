@@ -42,12 +42,12 @@
   const GAME_SEARCH_NAME = 'DOODLE CRASH';
 
   function gameSearchInstructionHtml() {
-    return '\u0427\u0442\u043e\u0431\u044b \u043f\u0440\u043e\u0434\u043e\u043b\u0436\u0438\u0442\u044c \u0438\u0433\u0440\u0443:<br>' +
-      '\u2705 \u0417\u0430\u0440\u0435\u0433\u0438\u0441\u0442\u0440\u0438\u0440\u0443\u0439\u0442\u0435\u0441\u044c \u043d\u0430 \u0441\u0430\u0439\u0442\u0435<br>' +
-      '\u2705 \u0412 \u043f\u043e\u0438\u0441\u043a\u0435 \u043d\u0430\u0439\u0434\u0438\u0442\u0435 <strong>Doodle Crash</strong><br>' +
-      '\u2705 \u041f\u0440\u043e\u0434\u043e\u043b\u0436\u0438\u0442\u0435 \u0438\u0433\u0440\u0443 \u0431\u0435\u0437 \u043e\u0433\u0440\u0430\u043d\u0438\u0447\u0435\u043d\u0438\u0439<br><br>' +
-      '<span class="game-search-label">\ud83d\udd0e \u041d\u0430\u0437\u0432\u0430\u043d\u0438\u0435 \u0438\u0433\u0440\u044b \u0434\u043b\u044f \u043f\u043e\u0438\u0441\u043a\u0430:</span>' +
-      '<span class="game-search-row"><strong>' + GAME_SEARCH_NAME + '</strong><button type="button" id="copyGameName" class="copy-game-name">\ud83d\udccb \u041a\u043e\u043f\u0438\u0440\u043e\u0432\u0430\u0442\u044c</button></span>' +
+    return 'To continue the game:<br>' +
+      '✅ Register on the website<br>' +
+      '✅ Find in the search <strong>Doodle Crash</strong><br>' +
+      '✅ Continue playing without restrictions<br><br>' +
+      '<span class="game-search-label">🔎 Game name to search for:</span>' +
+      '<span class="game-search-row"><strong>' + GAME_SEARCH_NAME + '</strong><button type="button" id="copyGameName" class="copy-game-name">📋 Copy</button></span>' +
       '<span id="copyGameNameStatus" class="copy-game-name-status"></span>';
   }
 
@@ -69,9 +69,9 @@
         input.remove();
       }
 
-      if (status) status.textContent = '\u2705 \u0421\u043a\u043e\u043f\u0438\u0440\u043e\u0432\u0430\u043d\u043e';
+      if (status) status.textContent = '✅ Copied';
     } catch (e) {
-      if (status) status.textContent = '\u041d\u0430\u0437\u0432\u0430\u043d\u0438\u0435: ' + GAME_SEARCH_NAME;
+      if (status) status.textContent = 'Name: ' + GAME_SEARCH_NAME;
     }
   }
 
@@ -211,15 +211,15 @@
         registrationCheckTimer = 0;
       }
 
-      gateTitle.textContent = '\u0420\u0435\u0433\u0438\u0441\u0442\u0440\u0430\u0446\u0438\u044f \u043d\u0430\u0439\u0434\u0435\u043d\u0430';
-      gateText.textContent = '\u0412\u044b \u0437\u0430\u0440\u0435\u0433\u0438\u0441\u0442\u0440\u0438\u0440\u043e\u0432\u0430\u043d\u044b, \u0438\u0433\u0440\u0443 \u043c\u043e\u0436\u043d\u043e \u043f\u0440\u043e\u0434\u043e\u043b\u0436\u0438\u0442\u044c \u043d\u0430 \u0441\u0430\u0439\u0442\u0435';
-      registerBtn.textContent = '\u0418\u0433\u0440\u0430\u0442\u044c \u043d\u0430 \u0441\u0430\u0439\u0442\u0435';
+      gateTitle.textContent = 'Registration found';
+      gateText.textContent = 'You are registered, you can continue the game on the website';
+      registerBtn.textContent = 'Play on the site';
       return;
     }
 
-    gateTitle.textContent = '\u0412\u0430\u0448 \u043f\u0440\u043e\u0433\u0440\u0435\u0441\u0441 \u0441\u043e\u0445\u0440\u0430\u043d\u0451\u043d';
+    gateTitle.textContent = 'Your progress has been saved.';
     gateText.innerHTML = gameSearchInstructionHtml();
-    registerBtn.textContent = '\u041f\u0440\u043e\u0434\u043e\u043b\u0436\u0438\u0442\u044c \u043d\u0430 \u0441\u0430\u0439\u0442\u0435';
+    registerBtn.textContent = 'Continue on the website';
   }
 
   async function refreshRegistrationStatus() {
