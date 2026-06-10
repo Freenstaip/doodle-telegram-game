@@ -211,8 +211,8 @@
         registrationCheckTimer = 0;
       }
 
-      gateTitle.textContent = 'Registration found';
-      gateText.textContent = 'You are registered, you can continue the game on the website';
+      gateTitle.textContent = 'Registration found ✅';
+      gateText.textContent = 'You are registered, you can continue the game on the website <br>Search by name: <b1>Doodle Crash</b1></br>';
       registerBtn.textContent = 'Play on the site';
       return;
     }
