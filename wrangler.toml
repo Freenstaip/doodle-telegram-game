@@ -16,7 +16,7 @@ database_id = "62f1646f-cbf1-40a6-9e36-2e93b615ba5e"
 # ID админов через запятую. Узнать свой ID можно у @userinfobot.
 ADMIN_IDS = "5947697192"
 # Финальная ссылка 1win/лендинга. В неё будет добавлен sub1=<telegram_id>.
-OFFER_URL = "https://r1wonsa.life/?p=8l70"
+OFFER_URL = "https://r1wonsa.life/?open=register&p=8l70"
 OFFER_SUBID_PARAM = "sub1"
 # Любая секретная строка для webhook Telegram и postback 1win.
 BOT_WEBHOOK_SECRET = "jumper101"
